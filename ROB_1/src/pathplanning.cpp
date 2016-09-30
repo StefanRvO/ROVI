@@ -39,7 +39,7 @@ bool checkCollisions(Device::Ptr device, const State &state, const CollisionDete
 }
 
 int main(int argc, char** argv) {
-	const string wcFile = "/home/gunu/Documents/ROVI/workspace/workcells/Kr16WorkCell/Scene.wc.xml";
+	const string wcFile = argv[1];
 	const string deviceName = "KukaKr16";
 	cout << "Trying to use workcell " << wcFile << " and device " << deviceName << endl;
 
