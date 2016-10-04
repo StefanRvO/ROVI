@@ -30,7 +30,6 @@ void LuaGenerator::add_start_point(const Q &q)
     std::stringstream s;
     s << get_setQ(q);
     s << "attach(bottle,gripper)\n";
-    s << "attach(bottle,table)\n";
     lua_string += s.str();
 }
 
@@ -47,4 +46,8 @@ void LuaGenerator::add_point(const Q &q)
     std::stringstream s;
     s << get_setQ(q);
     lua_string += s.str();
+}
+void LuaGenerator::add_end()
+{
+    lua_string += "attach(bottle,table)\n";
 }

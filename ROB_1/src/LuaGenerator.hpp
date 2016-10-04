@@ -14,4 +14,5 @@ class LuaGenerator
     std::string get_setQ(const Q &q);
     std::string get_string()
         { return lua_string; }
+    void add_end();
 };

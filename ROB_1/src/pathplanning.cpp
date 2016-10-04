@@ -4,6 +4,8 @@
 #include <rwlibs/pathplanners/rrt/RRTPlanner.hpp>
 #include <rwlibs/pathplanners/rrt/RRTQToQPlanner.hpp>
 #include <rwlibs/proximitystrategies/ProximityStrategyFactory.hpp>
+#include <rw/math/Math.hpp>
+
 #include "LuaGenerator.hpp"
 using namespace std;
 using namespace rw::common;
@@ -93,7 +95,7 @@ int main(int argc, char** argv) {
 		cout << *it << endl;
         lua_gen.add_point(*it);
 	}
-
+    lua_gen.add_end();
     std::cout << lua_gen.get_string() << std::endl;
 
 	cout << "Program done." << endl;
