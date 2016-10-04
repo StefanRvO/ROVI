@@ -1,9 +1,10 @@
 #include <iostream>
+#include <fstream>
 #include <rw/rw.hpp>
 #include <rwlibs/pathplanners/rrt/RRTPlanner.hpp>
 #include <rwlibs/pathplanners/rrt/RRTQToQPlanner.hpp>
 #include <rwlibs/proximitystrategies/ProximityStrategyFactory.hpp>
-
+#include "LuaGenerator.hpp"
 using namespace std;
 using namespace rw::common;
 using namespace rw::math;
@@ -39,7 +40,9 @@ bool checkCollisions(Device::Ptr device, const State &state, const CollisionDete
 }
 
 int main(int argc, char** argv) {
+    LuaGenerator lua_gen;
 	const string wcFile = argv[1];
+    lua_gen.make_preample();
 	const string deviceName = "KukaKr16";
 	cout << "Trying to use workcell " << wcFile << " and device " << deviceName << endl;
 
@@ -66,10 +69,10 @@ int main(int argc, char** argv) {
 	double extend = 0.1;
 	QToQPlanner::Ptr planner = RRTPlanner::makeQToQPlanner(constraint, sampler, metric, extend, RRTPlanner::RRTConnect);
 
-	Q from(6,-0.2,-0.6,1.5,0.0,0.6,1.2);
+	Q from(6,-3.142, -0.827, -3.002, -3.143, 0.099, -1.573);
 	//Q to(6,1.7,0.6,-0.8,0.3,0.7,-0.5); // Very difficult for planner
-	Q to(6,1.4,-1.3,1.5,0.3,1.3,1.6);
-
+	Q to(6, 1.571, 0.006, 0.03, 0.153, 0.762, 4.49);
+    lua_gen.add_start_point(from);
 	if (!checkCollisions(device, state, detector, from))
 		return 0;
 	if (!checkCollisions(device, state, detector, to))
@@ -88,7 +91,10 @@ int main(int argc, char** argv) {
 
 	for (QPath::iterator it = path.begin(); it < path.end(); it++) {
 		cout << *it << endl;
+        lua_gen.add_point(*it);
 	}
+
+    std::cout << lua_gen.get_string() << std::endl;
 
 	cout << "Program done." << endl;
 	return 0;
