@@ -1,5 +1,5 @@
 #include "findPathWithEpsilon.hpp"
-
+#include "rw/kinematics/Kinematics.hpp"
 findPathWithEpsilon::findPathWithEpsilon(string wcFile, string deviceName)
 {
   this->wcFile = wcFile;
@@ -13,9 +13,7 @@ findPathWithEpsilon::findPathWithEpsilon(string wcFile, string deviceName)
 		return;
 	}
 	state = wc->getDefaultState();
-
 	detector = new CollisionDetector(wc, ProximityStrategyFactory::makeDefaultCollisionStrategy());
-	constraint = PlannerConstraint::make(detector,device,state);
 
 	/** Most easy way: uses default parameters based on given device
 		sampler: QSampler::makeUniform(device)
@@ -24,7 +22,6 @@ findPathWithEpsilon::findPathWithEpsilon(string wcFile, string deviceName)
 	//QToQPlanner::Ptr planner = RRTPlanner::makeQToQPlanner(constraint, device, RRTPlanner::RRTConnect);
 
 	/** More complex way: allows more detailed definition of parameters and methods */
-	sampler = QSampler::makeConstrained(QSampler::makeUniform(device),constraint.getQConstraintPtr());
 	metric = MetricFactory::makeEuclidean<Q>();
 }
 
@@ -51,6 +48,12 @@ bool findPathWithEpsilon::checkCollisions(Device::Ptr &device, const State &stat
 
 QPath findPathWithEpsilon::findPath(double epsilon, Q from, Q to)
 {
+    auto gripper = wc->findFrame("Tool");
+    auto bottle = wc->findFrame("Bottle");
+    device->setQ(from,state);
+    Kinematics::gripFrame(bottle, gripper, state);
+    constraint = PlannerConstraint::make(detector,device,state);
+	sampler = QSampler::makeConstrained(QSampler::makeUniform(device),constraint.getQConstraintPtr());
 	QToQPlanner::Ptr planner = RRTPlanner::makeQToQPlanner(constraint, sampler, metric, epsilon, RRTPlanner::RRTConnect);
 
 	if (!checkCollisions(device, state, *detector, from))

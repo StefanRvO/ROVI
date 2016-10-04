@@ -18,7 +18,7 @@ using namespace rw::trajectory;
 using namespace rwlibs::pathplanners;
 using namespace rwlibs::proximitystrategies;
 
-#define MAXTIME 10.
+#define MAXTIME 1000.
 
 class findPathWithEpsilon
 {
@@ -28,7 +28,7 @@ class findPathWithEpsilon
     string deviceName;
     WorkCell::Ptr wc;
     Device::Ptr device;
-    const State state;
+    State state;
     CollisionDetector *detector;
     PlannerConstraint constraint;
     QSampler::Ptr sampler;
