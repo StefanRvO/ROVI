@@ -49,14 +49,9 @@ bool findPathWithEpsilon::checkCollisions(Device::Ptr &device, const State &stat
 	return true;
 }
 
-void findPathWithEpsilon::findPath(double epsilon)
+QPath findPathWithEpsilon::findPath(double epsilon, Q from, Q to)
 {
-  //double extend = 0.1;
 	QToQPlanner::Ptr planner = RRTPlanner::makeQToQPlanner(constraint, sampler, metric, epsilon, RRTPlanner::RRTConnect);
-
-	Q from(6,-0.2,-0.6,1.5,0.0,0.6,1.2);
-	//Q to(6,1.7,0.6,-0.8,0.3,0.7,-0.5); // Very difficult for planner
-	Q to(6,1.4,-1.3,1.5,0.3,1.3,1.6);
 
 	if (!checkCollisions(device, state, *detector, from))
 		return 0;
@@ -74,9 +69,5 @@ void findPathWithEpsilon::findPath(double epsilon)
 		cout << "Notice: max time of " << MAXTIME << " seconds reached." << endl;
 	}
 
-	for (QPath::iterator it = path.begin(); it < path.end(); it++) {
-		cout << *it << endl;
-	}
-
-	cout << "Program done." << endl;
+	return path;
 }

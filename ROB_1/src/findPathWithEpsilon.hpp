@@ -36,5 +36,5 @@ class findPathWithEpsilon
 
   public:
     findPathWithEpsilon(string wcFile, string deviceName);
-    void findPath(double epsilon);
+    QPath findPath(double epsilon, Q from, Q to);
 };
