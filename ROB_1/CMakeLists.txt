@@ -11,6 +11,7 @@ SET(ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 # Use c++11
 SET(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -g -fpermissive -Wno-ignored-attributes -Wno-misleading-indentation -Wno-deprecated-declarations -Wno-unused-local-typedefs")
 
+
 # Set the RobWork root (edit in .bashrc if necessary)
 SET(RW_ROOT $ENV{RW_ROOT})
 
@@ -28,7 +29,8 @@ INCLUDE_DIRECTORIES( ${ROBWORK_INCLUDE_DIRS} )
 LINK_DIRECTORIES( ${ROBWORK_LIBRARY_DIRS} )
 
 # Add the source files to build
-SET(SrcFiles src/pathplanning.cpp src/findPathWithEpsilon.cpp)
+SET(SrcFiles src/pathplanning.cpp src/LuaGenerator.cpp src/findPathWithEpsilon.cpp)
+
 
 # The shared library to build:
 ADD_EXECUTABLE(pathplanning ${SrcFiles})
