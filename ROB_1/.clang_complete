@@ -1,0 +1,4 @@
+-Iinclude
+-Isrc
+-I/home/stefan/HDD/RW/RobWork/src
+-I/home/stefan/HDD/RW/RobWork/ext/eigen3/

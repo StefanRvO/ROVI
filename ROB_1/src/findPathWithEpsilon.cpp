@@ -9,7 +9,7 @@ findPathWithEpsilon::findPathWithEpsilon(string wcFile, string deviceName)
 	device = wc->findDevice(deviceName);
 
   if (device == NULL) {
-		cerr << "Device: " << deviceName << " not found!" << endl;
+		//cerr << "Device: " << deviceName << " not found!" << endl;
 		return;
 	}
 	state = wc->getDefaultState();
@@ -46,7 +46,7 @@ bool findPathWithEpsilon::checkCollisions(Device::Ptr &device, const State &stat
 	return true;
 }
 
-QPath findPathWithEpsilon::findPath(double epsilon, Q from, Q to)
+QPath findPathWithEpsilon::findPath(double epsilon, Q from, Q to, double &time)
 {
     auto gripper = wc->findFrame("Tool");
     auto bottle = wc->findFrame("Bottle");
@@ -61,16 +61,16 @@ QPath findPathWithEpsilon::findPath(double epsilon, Q from, Q to)
 	if (!checkCollisions(device, state, *detector, to))
 		return 0;
 
-	cout << "Planning from " << from << " to " << to << endl;
+	//cout << "Planning from " << from << " to " << to << endl;
 	QPath path;
 	Timer t;
 	t.resetAndResume();
 	planner->query(from,to,path,MAXTIME);
 	t.pause();
-	cout << "Path of length " << path.size() << " found in " << t.getTime() << " seconds." << endl;
+	//cout << "Path of length " << path.size() << " found in " << t.getTime() << " seconds." << endl;
 	if (t.getTime() >= MAXTIME) {
 		cout << "Notice: max time of " << MAXTIME << " seconds reached." << endl;
 	}
-
+    time = t.getTime();
 	return path;
 }

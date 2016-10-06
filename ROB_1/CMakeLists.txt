@@ -9,7 +9,7 @@ MESSAGE(${PROJECT_NAME} ":")
 SET(ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Use c++11
-SET(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -g -fpermissive -Wno-ignored-attributes -Wno-misleading-indentation -Wno-deprecated-declarations -Wno-unused-local-typedefs")
+SET(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -Ofast -g -Wall -fpermissive -Wno-ignored-attributes -Wno-misleading-indentation -Wno-deprecated-declarations -Wno-unused-local-typedefs")
 
 
 # Set the RobWork root (edit in .bashrc if necessary)
