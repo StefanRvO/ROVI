@@ -5,8 +5,8 @@ double get_path_length(QPath &path)
 {
     double length = 0;
     for(size_t i = 1; i < path.size(); i++)
-    {
-        length += get_dist(path[i - 1], path[i]);
+    {   double tmp = get_dist(path[i - 1], path[i]);
+        length += tmp;
     }
     return length;
 }
