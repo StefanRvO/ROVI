@@ -16,12 +16,21 @@ class DftUtilities
     cv::Mat_<float> magnitude, phase;
     cv::Mat_<float> magnitudel;   // Logarithm of magnitude
     void dftshift(cv::Mat_<float>& magnitude);
+    float butterworthFilter(int x, int y, int v, int u, float d0, int order);
+    double pixel_distance(double u, double v);
+    double gaussion_coefficient(double x, double y, double u, double v, double d0);
+
 
   public:
+    void gaussian_filter(int v, int u, double d0);
     DftUtilities();
     void computeDFT(cv::Mat image);
     void setMagnitude(cv::Mat_<float> magnitude);
     cv::Mat_<float> getMagnitude();
+    cv::Mat_<float> getDFTImage();
     void plotDFT();
     void plotImage();
+    cv::Mat getImage();
+    void applyFilter(int v, int u, float d0, int order);
+
 };

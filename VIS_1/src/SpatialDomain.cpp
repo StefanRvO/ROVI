@@ -79,13 +79,31 @@ Mat SpatialDomain::medianFilter(const Mat &image, int maskSize, float percenttil
   return newImage;
 }
 
+Mat SpatialDomain::adaptiveMedianFilter(const Mat &image, int init_mask, int max_mask)
+{
+  Mat newImage = image.clone();
+  Mat paddedImage = image.clone();
+  std::vector<unsigned char> values(max_mask * max_mask);
+  cv::copyMakeBorder(paddedImage, paddedImage, max_mask/2, max_mask/2, max_mask/2, max_mask/2, cv::BORDER_REPLICATE);
+
+  for(int x = max_mask/2; x<paddedImage.cols-(max_mask/2); x++)
+  {
+    for(int y = max_mask/2; y<paddedImage.rows-(max_mask/2); y++)
+    {
+      //if(x % 50 == 0) std::cout << x << "\t" << y << "\t" << newImage.cols << "\t" << newImage.rows << std::endl;
+      unsigned char pixelValue = applyAdaptiveMedianFilter(paddedImage, x, y, init_mask, max_mask, values);
+      newImage.at<uchar>(y-max_mask/2, x-max_mask/2) = pixelValue;
+    }
+  }
+  return newImage;
+}
+
 
 unsigned char SpatialDomain::applyMedianFilter(const Mat &image, int &xPos, int &yPos,
     int &maskSize, std::vector<unsigned char> &values, float percenttile)
 {
   //return image.at<uchar>(0 + yPos, 0 + xPos);
   values.clear();
-  uint8_t cnt = 0;
   for(int x = -maskSize/2; x <= maskSize / 2; x++)
   {
     for(int y = -maskSize/2; y <= maskSize / 2; y++)
@@ -101,10 +119,46 @@ unsigned char SpatialDomain::applyMedianFilter(const Mat &image, int &xPos, int 
   return values[std::min((size_t)(values.size() * percenttile), values.size() - 1)];
 }
 
-
 bool SpatialDomain::ignore_pixel(unsigned char pixel)
 {
   for(auto &val : this->to_ignore)
     if(val == pixel) return true;
   return false;
+}
+
+
+unsigned char SpatialDomain::applyAdaptiveMedianFilter(const Mat &image, int &xPos, int &yPos,
+    int init_mask, int &max_mask, std::vector<unsigned char> &values)
+{
+    values.clear();
+    for(int x = -init_mask / 2; x <= init_mask / 2; x++)
+    {
+      for(int y = -init_mask / 2; y <= init_mask / 2; y++)
+      {
+        //std::cout << (int)cnt << "\t" << values.size() << std::endl;
+        auto tmp = image.at<uchar>(y + yPos, x + xPos);
+        values.push_back(tmp);
+      }
+    }
+    std::sort(values.begin(), values.end());
+    int Z_min = values.front();
+    int Z_max = values.back();
+    int Z_med = values[values.size() / 2];
+    int Z_xy  = image.at<uchar>(yPos, xPos);
+    int A1 = Z_med - Z_min;
+    int A2 = Z_med - Z_max;
+    if(A1 > 0 && A2 < 0) return applyAdaptiveMedianFilter_B(Z_xy, Z_min, Z_max, Z_med);
+    init_mask += 2;
+    //Recurse. This is very ineffective, but who cares?
+    if(init_mask <= max_mask)
+        return applyAdaptiveMedianFilter(image, xPos, yPos, init_mask, max_mask, values);
+    else
+        return Z_med;
+}
+unsigned char SpatialDomain::applyAdaptiveMedianFilter_B(int Z_xy, int Z_min, int Z_max, int Z_median)
+{
+    int B1 = Z_xy - Z_min;
+    int B2 = Z_xy - Z_max;
+    if(B1 > 0 && B2 < 0) return Z_xy;
+    return Z_median;
 }
