@@ -1,5 +1,5 @@
 #include "DftUtilities.hpp"
-
+#include <cmath>
 DftUtilities::DftUtilities()
 {
 }
@@ -57,6 +57,14 @@ void DftUtilities::plotDFT()
   cv::resizeWindow("Magnitude", 500,500);
 }
 
+cv::Mat_<float> DftUtilities::getDFTImage()
+{
+  magnitudel = magnitude + 1.0f;
+  cv::log(magnitudel, magnitudel);
+  cv::normalize(magnitudel, magnitudel, 0.0, 1.0, CV_MINMAX);
+  return magnitudel;
+}
+
 void DftUtilities::plotImage()
 {
   // Shift back quadrants of the spectrum
@@ -77,6 +85,26 @@ void DftUtilities::plotImage()
   cv::imshow("New image", newImage);
 }
 
+cv::Mat DftUtilities::getImage()
+{
+  // Shift back quadrants of the spectrum
+  dftshift(magnitude);
+
+  // Compute complex DFT output from magnitude/phase
+  cv::polarToCart(magnitude, phase, imgs[0], imgs[1]);
+
+  // Merge DFT into one image and restore
+  cv::merge(imgs, 2, img_dft);
+  cv::dft(img_dft, newImage, cv::DFT_INVERSE + cv::DFT_SCALE + cv::DFT_REAL_OUTPUT);
+
+  //Cut away the borders
+  newImage = newImage(cv::Rect(0,0,imgCols,imgRows));
+
+  // Normalize and return image
+  cv::normalize(newImage, newImage, 0.0, 1.0, CV_MINMAX);
+  return newImage;
+}
+
 void DftUtilities::dftshift(cv::Mat_<float>& magnitude)
 {
   const int cx = magnitude.cols/2;
@@ -95,4 +123,24 @@ void DftUtilities::dftshift(cv::Mat_<float>& magnitude)
   topRight.copyTo(tmp);
   bottomLeft.copyTo(topRight);
   tmp.copyTo(bottomLeft);
+}
+
+void DftUtilities::applyFilter(int v, int u, float d0, int order)
+{
+  // The filter coordinates is moved to origo
+  for(int x = -magnitude.cols / 2; x < magnitude.cols / 2; x++)
+  {
+    for(int y = -magnitude.rows / 2; y< magnitude.rows / 2; y++)
+    {
+      magnitude.at<float>(y + magnitude.rows / 2 , x + magnitude.cols / 2 ) *= butterworthFilter(x,y,v,u,d0,order);
+    }
+  }
+}
+
+float DftUtilities::butterworthFilter(int x, int y, int v, int u, float d0, int order)
+{
+  float new_x = x - v;
+  float new_y = y - u;
+  float equ_1 = sqrt((float)new_x * (float)new_x + (float)new_y * (float)new_y) / d0;
+  return 1./(1. + pow(equ_1, -order * 2));
 }

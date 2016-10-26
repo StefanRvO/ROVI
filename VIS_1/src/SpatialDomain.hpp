@@ -12,7 +12,7 @@ class SpatialDomain
   private:
     Mat getHistogram(const Mat &image);
     unsigned char applyMedianFilter(const Mat &image, int &xPos, int &yPos,
-      int &maskSize, std::vector<unsigned char> &values, float percenttile);
+    int &maskSize, std::vector<unsigned char> &values, float percenttile);
     std::vector<unsigned char> to_ignore;
     bool ignore_pixel(unsigned char pixel);
   public:

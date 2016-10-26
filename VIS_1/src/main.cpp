@@ -39,7 +39,7 @@ int main(int argc, char* argv[])
 
 
   //cv::waitKey();
-  */
+  */ /*
   // Exercise2
   cv::Mat img2 = cv::imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE);
   Mat histogram_org = spatialdomain.createHistogramImage(img2);
@@ -50,8 +50,25 @@ int main(int argc, char* argv[])
   Mat median_filtered = spatialdomain.medianFilter(img2, 5, 0.5);
   Mat histogram_filtered = spatialdomain.createHistogramImage(median_filtered);
   displayImage(median_filtered, "filtred image");
-  displayImage(histogram_filtered, "Histogram filtered");
+  displayImage(histogram_filtered, "Histogram filtered");*/
 
+  // Exercise 4 - Frequency analasis
+  cv::Mat img4 = cv::imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE);
+  displayImage(img4, "Image 4");
+
+  // Compute and plot DFT
+  dftutilities.computeDFT(img4);
+  cv::Mat frequencyPlot = dftutilities.getDFTImage();
+  frequencyPlot.convertTo(frequencyPlot, CV_8U, 255.0);
+  displayImage(frequencyPlot, "Original frequency spectrum");
+  cv::imwrite(out_dir + std::string("DFT.png"), frequencyPlot);
+
+  // Apply filter
+  dftutilities.applyFilter(204,213,100,3);
+  dftutilities.applyFilter(-204,-213,100,3);
+
+  dftutilities.plotDFT();
+  displayImage(dftutilities.getImage(), "New Image");
 
   cv::waitKey();
   return 0;
