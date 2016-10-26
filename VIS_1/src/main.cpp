@@ -18,9 +18,9 @@ int main(int argc, char* argv[])
   DftUtilities dftutilities;
   SpatialDomain spatialdomain;
 
-  /*
+
   // Exercise 1
-  cv::Mat img = cv::imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE);
+  /*cv::Mat img = cv::imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE);
   displayImage(img, "Original image");
 
   Mat histogram_org = spatialdomain.createHistogramImage(img);
@@ -37,9 +37,9 @@ int main(int argc, char* argv[])
   cv::imwrite(out_dir + std::string("median_filtered_90_hist.png"), spatialdomain.createHistogramImage(median_filtered_90));
   cv::imwrite(out_dir + std::string("median_filtered_ignore_hist.png"), spatialdomain.createHistogramImage(median_filtered_ignore));
 
-  */
-  //cv::waitKey();
 
+  //cv::waitKey();
+  */
   // Exercise2
   cv::Mat img2 = cv::imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE);
   Mat histogram_org = spatialdomain.createHistogramImage(img2);

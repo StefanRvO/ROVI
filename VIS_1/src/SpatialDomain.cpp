@@ -5,46 +5,46 @@ SpatialDomain::SpatialDomain()
 
 }
 
-Mat SpatialDomain::getHistogram(const Mat &image)
-{
-  int histSize = 256; // number of bins
-  int numOfIm = 1;
-  int channels[] = {0};
-  int dimensions = 1;
-  int numOfBins[] = {256};
-  float minMaxValue[] = {0.0, 255.0}; //the min and max value of the bins
-  const float* ranges[] = {minMaxValue};  //Array of min-max value arrays, so every dimension is assigned min and max
-  Mat histogram;
-
-  // Compute the histogram
-  calcHist(&image, numOfIm, channels, Mat(), histogram, dimensions, numOfBins, ranges);
-  return histogram;
-}
 
 Mat SpatialDomain::createHistogramImage(const Mat &image)
 {
-  int numOfBins = 256;
-  int histWidth = 512;
-  int histHeight = 400;
-  int binWidth = cvRound( (double) histWidth/numOfBins );
-  Mat histImage(histHeight, histWidth, CV_8UC3, Scalar( 0,0,0) );
-  Mat histogram = getHistogram(image);
+    int histSize = 256; // number of bins
+    int numOfIm = 1;
+    int *channels = nullptr;
+    int dimensions = 1;
+    float minMaxValue[] = {0.0, 256.0}; //the min and max value of the bins
+    const float* ranges[] = {minMaxValue};  //Array of min-max value arrays, so every dimension is assigned min and max
+    Mat histogram;
+    bool uniform = true;
+    bool accumulate = false;
 
-  /// Normalize the result to [ 0, histImage.rows ]
-  normalize(histogram, histogram, 0, histImage.rows, NORM_MINMAX, -1, Mat() );
+    // Compute the histogram
+    calcHist(&image, numOfIm, channels, Mat(), histogram, dimensions, &histSize, ranges, uniform, accumulate);
 
-  /// Draw histogram
-  for( int i = 1; i < numOfBins; i++ )
-  {
-      line( histImage, Point( binWidth*(i-1), histHeight - cvRound(histogram.at<float>(i-1)) ) ,
-                       Point( binWidth*(i), histHeight - cvRound(histogram.at<float>(i)) ),
-                       Scalar( 255, 0, 0), 2, 8, 0  );
-  }
+    int histWidth = 512;
+    int histHeight = 400;
+    int binWidth = cvRound( (double)histWidth/(double)histSize);
+    Mat histImage(histHeight, histWidth, CV_8UC3, Scalar( 0,0,0) );
+    for(uint16_t i = 0; i < 256; i++)
+    {
+        std::cout << histogram.at<float>(i) << std::endl;
+    }
+    /// Normalize the result to [ 0, histImage.rows ]
+    normalize(histogram, histogram, 0, histImage.rows, NORM_MINMAX, -1, Mat() );
 
-  return histImage;
+    std::cout << "\n\n\n\n" << std::endl;
+    /// Draw histogram
+    for( int i = 1; i < histSize + 1; i++ )
+    {
+          line( histImage, Point( binWidth*(i-1), histHeight - cvRound(histogram.at<float>(i-1)) ) ,
+                           Point( binWidth*(i), histHeight - cvRound(histogram.at<float>(i)) ),
+                           Scalar( 255, 0, 0), 2, 8, 0  );
+    }
+
+    return histImage;
 }
 
-Mat SpatialDomain::histEqualize(const Mat &image)
+/*Mat SpatialDomain::histEqualize(const Mat &image)
 {
   int MN = image.rows * image.cols; // Number of pixels
   int numOfBins = 256; // number of bins/intensity levels
@@ -63,7 +63,7 @@ Mat SpatialDomain::histEqualize(const Mat &image)
 
   LUT(image,lookup, result); //apply the lookup table
   return result;
-}
+}*/
 
 Mat SpatialDomain::medianFilter(const Mat &image, int maskSize, float percenttile)
 {
