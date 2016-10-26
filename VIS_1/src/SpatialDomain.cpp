@@ -25,20 +25,15 @@ Mat SpatialDomain::createHistogramImage(const Mat &image)
     int histHeight = 400;
     int binWidth = cvRound( (double)histWidth/(double)histSize);
     Mat histImage(histHeight, histWidth, CV_8UC3, Scalar( 0,0,0) );
-    for(uint16_t i = 0; i < 256; i++)
-    {
-        std::cout << histogram.at<float>(i) << std::endl;
-    }
     /// Normalize the result to [ 0, histImage.rows ]
     normalize(histogram, histogram, 0, histImage.rows, NORM_MINMAX, -1, Mat() );
 
-    std::cout << "\n\n\n\n" << std::endl;
     /// Draw histogram
-    for( int i = 1; i < histSize + 1; i++ )
+    for( int i = 0; i < histSize + 1; i++ )
     {
-          line( histImage, Point( binWidth*(i-1), histHeight - cvRound(histogram.at<float>(i-1)) ) ,
+          line( histImage, Point( binWidth*(i), histHeight) ,
                            Point( binWidth*(i), histHeight - cvRound(histogram.at<float>(i)) ),
-                           Scalar( 255, 0, 0), 2, 8, 0  );
+                           Scalar( 100, 100, 100), 2, 8, 0  );
     }
 
     return histImage;

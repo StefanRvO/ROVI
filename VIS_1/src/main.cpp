@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 
 
   // Exercise 1
-  /*cv::Mat img = cv::imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE);
+  cv::Mat img = cv::imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE);
   displayImage(img, "Original image");
 
   Mat histogram_org = spatialdomain.createHistogramImage(img);
@@ -39,20 +39,25 @@ int main(int argc, char* argv[])
 
 
   //cv::waitKey();
-  */
+
   // Exercise2
-  cv::Mat img2 = cv::imread(argv[1], CV_LOAD_IMAGE_GRAYSCALE);
-  Mat histogram_org = spatialdomain.createHistogramImage(img2);
+  SpatialDomain spatialdomain2;
+  cv::Mat img2 = cv::imread(argv[2], CV_LOAD_IMAGE_GRAYSCALE);
+  Mat histogram_org_2 = spatialdomain.createHistogramImage(img2);
   displayImage(img2, "Image 2");
-  displayImage(histogram_org, "Original histogram");
-  spatialdomain.add_ignored_pixel(0);
-  spatialdomain.add_ignored_pixel(255);
-  Mat median_filtered = spatialdomain.medianFilter(img2, 5, 0.5);
-  Mat histogram_filtered = spatialdomain.createHistogramImage(median_filtered);
-  displayImage(median_filtered, "filtred image");
-  displayImage(histogram_filtered, "Histogram filtered");
+  displayImage(histogram_org_2, "Original histogram");
+  spatialdomain2.add_ignored_pixel(0);
+  spatialdomain2.add_ignored_pixel(255);
+  Mat median_filtered_2 = spatialdomain2.medianFilter(img2, 5, 0.5);
+  Mat histogram_filtered_2 = spatialdomain2.createHistogramImage(median_filtered_2);
+  displayImage(median_filtered_2, "filtred image");
+  displayImage(histogram_filtered_2, "Histogram filtered");
 
 
+
+  //Exercise3
+
+  
   cv::waitKey();
   return 0;
 }
