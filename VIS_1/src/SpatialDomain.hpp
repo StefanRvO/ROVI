@@ -28,5 +28,6 @@ class SpatialDomain
     Mat medianFilter(const Mat &image, int maskSize, float percenttile = 0.5);
     Mat adaptiveMedianFilter(const Mat &image, int init_mask, int max_mask);
     void add_ignored_pixel(unsigned char val) { to_ignore.push_back(val); }
+    void shift_intensity(Mat &image, int change, int max_val, int min_val);
     //void plotHistogram();
 };

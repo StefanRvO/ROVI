@@ -5,6 +5,23 @@ SpatialDomain::SpatialDomain()
 
 }
 
+void SpatialDomain::shift_intensity(Mat &image, int change, int max_val, int min_val)
+{
+    for(int x = 0; x < image.cols; x++)
+    {
+      for(int y = 0; y< image.rows; y++)
+      {
+        unsigned char pixelValue = image.at<uchar>(y, x);
+        int new_value = pixelValue;
+        new_value += change;
+        new_value = max(new_value, min_val);
+
+        new_value = min(new_value, max_val);
+
+        image.at<uchar>(y, x) = new_value;
+      }
+    }
+}
 
 Mat SpatialDomain::createHistogramImage(const Mat &image)
 {
@@ -22,9 +39,9 @@ Mat SpatialDomain::createHistogramImage(const Mat &image)
     calcHist(&image, numOfIm, channels, Mat(), histogram, dimensions, &histSize, ranges, uniform, accumulate);
 
     int histWidth = 512;
-    int histHeight = 400;
+    int histHeight = 778;
     int binWidth = cvRound( (double)histWidth/(double)histSize);
-    Mat histImage(histHeight, histWidth, CV_8UC3, Scalar( 0,0,0) );
+    Mat histImage(histHeight, histWidth, CV_8UC3, Scalar( 230,230,230) );
     /// Normalize the result to [ 0, histImage.rows ]
     normalize(histogram, histogram, 0, histImage.rows, NORM_MINMAX, -1, Mat() );
 
@@ -33,7 +50,7 @@ Mat SpatialDomain::createHistogramImage(const Mat &image)
     {
           line( histImage, Point( binWidth*(i), histHeight) ,
                            Point( binWidth*(i), histHeight - cvRound(histogram.at<float>(i)) ),
-                           Scalar( 100, 100, 100), 2, 8, 0  );
+                           Scalar( 0, 0, 255), 2, 8, 0  );
     }
 
     return histImage;

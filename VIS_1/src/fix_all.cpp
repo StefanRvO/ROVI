@@ -22,12 +22,19 @@ void fix_image_4(std::string path, std::string out_dir);
 
 int main(int argc, char* argv[])
 {
-  std::string out_dir = "./";
-  std::string img_folder = argv[1];
-  fix_image_1(img_folder + "/Image1.png", out_dir);
-  fix_image_2(img_folder + "/Image2.png", out_dir);
-  fix_image_3(img_folder + "/Image3.png", out_dir);
-  fix_image_4(img_folder + "/Image4_1.png", out_dir);
+  try
+  {
+      std::string out_dir = "./";
+      std::string img_folder = argv[1];
+      fix_image_1(img_folder + "/Image1.png", out_dir);
+      fix_image_2(img_folder + "/Image2.png", out_dir);
+      fix_image_3(img_folder + "/Image3.png", out_dir);
+      fix_image_4(img_folder + "/Image4_1.png", out_dir);
+  }
+  catch(...)
+  {
+      std::cout << "Give the path to the folder containing the images as argument!" << std::endl;
+  }
   return 0;
 }
 
@@ -60,7 +67,7 @@ void fix_image_2(std::string path, std::string out_dir)
     cv::Mat img2 = cv::imread(path, CV_LOAD_IMAGE_GRAYSCALE);
     Mat histogram_org_2 = spatialdomain.createHistogramImage(img2);
     cv::imwrite(out_dir + std::string("histogram_org_2.png"), histogram_org_2);
-    Mat adapt_median_filtered_2 = spatialdomain.adaptiveMedianFilter(img2, 5, 31);
+    Mat adapt_median_filtered_2 = spatialdomain.adaptiveMedianFilter(img2, 3, 31);
     Mat adapt_median_filtered_2_bil;
     double sigmaSpace = 10;
     double sigmaColor = 10;
@@ -73,7 +80,8 @@ void fix_image_2(std::string path, std::string out_dir)
 
     cv::imwrite(out_dir + std::string("adapt_median_filtered_2.png"), adapt_median_filtered_2);
     cv::imwrite(out_dir + std::string("adapt_histogram_filtered_2.png"), adapt_histogram_filtered_2);
-    Mat median_filtered_2 = spatialdomain.medianFilter(img2, 7, 0.5);
+    Mat median_filtered_2 = spatialdomain.medianFilter(img2, 5, 0.5);
+    median_filtered_2 = spatialdomain.medianFilter(median_filtered_2, 5, 0.5);
     Mat histogram_filtered_2 = spatialdomain.createHistogramImage(median_filtered_2);
     cv::imwrite(out_dir + std::string("median_filtered_2.png"), median_filtered_2);
     cv::imwrite(out_dir + std::string("histogram_filtered_2.png"), histogram_filtered_2);
@@ -98,10 +106,11 @@ void fix_image_3(std::string path, std::string out_dir)
     cv::imwrite(out_dir + std::string("histogram_org_3.png"), histogram_org_3);
 
     //Apply bilateral filter.
-    double sigmaSpace = 30;
-    double sigmaColor = 30;
+    double sigmaSpace = 20;
+    double sigmaColor = 20;
     cv::Mat filtered_3;
     cv::bilateralFilter(img3, filtered_3, 0, sigmaColor, sigmaSpace);
+    //spatialdomain.shift_intensity(filtered_3, -40, 255, 0);
     Mat histogram_filtered_3 = spatialdomain.createHistogramImage(filtered_3);
     Mat uniform_area_filtered = filtered_3(cv::Rect(10,10, 100, 100));
     Mat uniform_area_filtered_hist = spatialdomain.createHistogramImage(uniform_area_filtered);
