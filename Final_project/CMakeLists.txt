@@ -3,7 +3,8 @@ project(vision)
 set (CMAKE_CXX_FLAGS "-Ofast -Wall -g -std=c++11")
 find_package(OpenCV REQUIRED)
 
-add_executable(main src/main.cpp)
 
-target_link_libraries(main ${OpenCV_LIBS})
+add_executable(LineFind src/LineFinding.cpp)
 
+
+target_link_libraries(LineFind ${OpenCV_LIBS})
