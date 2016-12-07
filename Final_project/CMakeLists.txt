@@ -3,14 +3,7 @@ project(vision)
 set (CMAKE_CXX_FLAGS "-Ofast -Wall -g -std=c++11")
 find_package(OpenCV REQUIRED)
 
-add_executable(fix_all src/fix_all.cpp src/DftUtilities.cpp src/SpatialDomain.cpp)
-add_executable(fix_1 src/fix_image1.cpp src/DftUtilities.cpp src/SpatialDomain.cpp)
-add_executable(fix_2 src/fix_image2.cpp src/DftUtilities.cpp src/SpatialDomain.cpp)
-add_executable(fix_3 src/fix_image3.cpp src/DftUtilities.cpp src/SpatialDomain.cpp)
-add_executable(fix_4 src/fix_image4.cpp src/DftUtilities.cpp src/SpatialDomain.cpp)
+add_executable(main src/main.cpp)
 
-target_link_libraries(fix_all ${OpenCV_LIBS})
-target_link_libraries(fix_1 ${OpenCV_LIBS})
-target_link_libraries(fix_2 ${OpenCV_LIBS})
-target_link_libraries(fix_3 ${OpenCV_LIBS})
-target_link_libraries(fix_4 ${OpenCV_LIBS})
+target_link_libraries(main ${OpenCV_LIBS})
+
