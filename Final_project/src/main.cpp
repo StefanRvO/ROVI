@@ -5,6 +5,23 @@
 
 using namespace std;
 
+// Global variables
+cv::Mat hsvImg;
+
+const int hSlider = 180;
+int hSliderMin = 0;
+int hSliderMax = 180;
+
+const int sSlider = 255;
+int sSliderMin = 0;
+int sSliderMax = 255;
+
+const int vSlider = 255;
+int vSliderMin = 0;
+int vSliderMax = 255;
+
+
+
 
 cv::Mat getThresholdImage(const cv::Mat &inImg)
 {
@@ -82,6 +99,41 @@ cv::Mat getThresholdImage2(const cv::Mat &inImg, cv::Scalar redThresh, cv::Scala
 }
 
 
+// HSV Trackbar handler
+void on_trackbar( int, void* )
+{
+    // Segmentate image from HSV trackbar values
+    cv::Mat dstImg;
+    cv::inRange(hsvImg, cv::Scalar(hSliderMin, sSliderMin, vSliderMin), cv::Scalar(hSliderMax, sSliderMax, vSliderMax), dstImg);
+    imshow( "HSV Colour Segmentation", dstImg);
+}
+
+
+cv::Mat applyHsvTrackbar(const cv::Mat &inImg)
+{
+    cv::cvtColor(inImg, hsvImg, CV_BGR2HSV);    // Convert image to HSV
+
+    // Create a window with trackbars that allow you to find the HSV values
+    namedWindow("Colour Segmentation", cv::WINDOW_AUTOSIZE);
+
+    cv::createTrackbar( "Hue min", "Colour Segmentation", &hSliderMin, hSlider, on_trackbar );
+    cv::createTrackbar( "Hue max", "Colour Segmentation", &hSliderMax, hSlider, on_trackbar );
+    cv::createTrackbar( "S min", "Colour Segmentation", &sSliderMin, sSlider, on_trackbar );
+    cv::createTrackbar( "S max", "Colour Segmentation", &sSliderMax, sSlider, on_trackbar );
+    cv::createTrackbar( "V min", "Colour Segmentation", &vSliderMin, vSlider, on_trackbar );
+    cv::createTrackbar( "V max", "Colour Segmentation", &vSliderMax, vSlider, on_trackbar );
+
+    cv::waitKey(0);
+}
+
+
+cv::Mat applyHsvThreshold(const cv::Mat &inImg, const cv::Scalar minThresh, const cv::Scalar maxThresh)
+{
+    cv::Mat dstImg;
+    cv::cvtColor(inImg, hsvImg, CV_BGR2HSV);    // Convert image to HSV
+    cv::inRange(hsvImg, minThresh, maxThresh, dstImg);
+    return dstImg;
+}
 
 
 int main(int argc, char** argv)
@@ -90,13 +142,21 @@ int main(int argc, char** argv)
     cv::Mat img = cv::imread(argv[1]);
     imshow("Original", img);
 
+    //applyHsvTrackbar(img);
+
+    cv::Mat hsvThreshImg = applyHsvThreshold(img, cv::Scalar(100, 100, 45), cv::Scalar(120, 200, 80));
+    imshow("HSV segmentation", hsvThreshImg);
+    cv::waitKey(0);
+
+
+    /*
     // Apply color threshold on the image
     cv::Mat threshImg = getThresholdImage2(img, cv::Scalar(32.2732, 47.724, 133.686), cv::Scalar(60.772, 32, 26.8812));
     imshow("Thresholded image", threshImg);
-    //cv::waitKey(0);
+    //cv::waitKey(0);*/
 
     // Dilate and erode
-    cv::Mat segmentedImg = threshImg.clone();
+    cv::Mat segmentedImg = hsvThreshImg.clone();
     cv::Mat kernel = cv::Mat::ones(3,3,CV_8UC1);
     cv::dilate(segmentedImg,segmentedImg,kernel);
     cv::erode(segmentedImg,segmentedImg,kernel);
@@ -104,7 +164,7 @@ int main(int argc, char** argv)
     cv::erode(segmentedImg,segmentedImg,kernel);
     cv::dilate(segmentedImg,segmentedImg,kernel);
     imshow("Dialate and erode", segmentedImg);
-    //cv::waitKey(0);
+    cv::waitKey(0);
 
 
     // OBS stolen find contours which have a area larger than 2000
