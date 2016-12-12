@@ -6,55 +6,84 @@
 #include <vector>
 #include <cmath>
 #include <vector>
+#include <algorithm>
+#include <cstdlib>
 
 using namespace std;
 using namespace cv;
 
-// Global variables
-cv::Mat hsvImg;
 
-const int hSlider = 180;
-int hSliderMin = 0;
-int hSliderMax = 180;
 
-const int sSlider = 255;
-int sSliderMin = 0;
-int sSliderMax = 255;
-
-const int vSlider = 255;
-int vSliderMin = 0;
-int vSliderMax = 255;
-void on_trackbar( int, void* )
+float get_distance(Point2f line_a, Point2f line_b, Point2f p)
 {
-    // Segmentate image from HSV trackbar values
-    cv::Mat dstImg;
-    cv::inRange(hsvImg, cv::Scalar(hSliderMin, sSliderMin, vSliderMin), cv::Scalar(hSliderMax, sSliderMax, vSliderMax), dstImg);
-    imshow( "HSV Colour Segmentation", dstImg);
+    double num = abs((line_b.x - line_a.x) * (line_a.y - p.y) - (line_a.x - p.x) * (line_b.y - line_a.y));
+    double denum = sqrt(pow((line_b.y - line_a.y), 2) + pow((line_b.x - line_a.x), 2));
+    return num/denum;
+}
+float get_distance(Point2f p1, Point2f p2)
+{
+    Point2f diff = p1 - p2;
+    return sqrt(diff.x * diff.x + diff.y * diff.y);
+}
+float get_distance(Point2f line1_a, Point2f line1_b, Point2f line2_a, Point2f line2_b)
+{
+    //We find the minimum of the four possible distances
+    float maximum = get_distance(line1_a, line1_b, line2_a);
+    maximum = max(maximum, get_distance(line1_a, line1_b, line2_b));
+    maximum = max(maximum, get_distance(line2_a, line2_b, line1_a));
+    maximum = max(maximum, get_distance(line2_a, line2_b, line1_b));
+    return maximum;
 }
 
-cv::Mat applyHSV(cv::Mat &src_img)
+Point2f get_direction_vector(Point2f line_a, Point2f line_b)
 {
-    cv::Mat dstImg;
-    cv::inRange(hsvImg, cv::Scalar(hSliderMin, sSliderMin, vSliderMin), cv::Scalar(hSliderMax, sSliderMax, vSliderMax), dstImg);
-    return src_img;
+    Point2f direction = Point2f(line_a.x - line_b.x, line_a.y - line_b.y);
+    double mag = sqrt(direction.x * direction.x + direction.y * direction.y);
+    direction.x /= mag;
+    direction.y /= mag;
+    //Make sure the direction have always the same sign
+    if(direction.x < 0) return - direction;
+    return direction;
+}
+float get_angle(Point2f line1_a, Point2f line1_b)
+{
+    Point2f direction = get_direction_vector(line1_a, line1_b);
+    return std::atan(direction.y / direction.x);
 }
 
-cv::Mat applyHsvTrackbar(const cv::Mat &inImg)
+Point2f find_intersection(Point2f line1_a, Point2f line1_b, Point2f line2_a, Point2f line2_b)
 {
-    cv::cvtColor(inImg, hsvImg, CV_BGR2HSV);    // Convert image to HSV
+    Point2f x = line2_a - line1_a;
+    Point2f d1 = line1_b - line1_a;
+    Point2f d2 = line2_b - line2_a;
 
-    // Create a window with trackbars that allow you to find the HSV values
-    namedWindow("Colour Segmentation", cv::WINDOW_AUTOSIZE);
+    float cross = d1.x*d2.y - d1.y*d2.x;
+    if (abs(cross) < /*EPS*/1e-8)
+        return Point2f(-1,-1);
 
-    cv::createTrackbar( "Hue min", "Colour Segmentation", &hSliderMin, hSlider, on_trackbar );
-    cv::createTrackbar( "Hue max", "Colour Segmentation", &hSliderMax, hSlider, on_trackbar );
-    cv::createTrackbar( "S min", "Colour Segmentation", &sSliderMin, sSlider, on_trackbar );
-    cv::createTrackbar( "S max", "Colour Segmentation", &sSliderMax, sSlider, on_trackbar );
-    cv::createTrackbar( "V min", "Colour Segmentation", &vSliderMin, vSlider, on_trackbar );
-    cv::createTrackbar( "V max", "Colour Segmentation", &vSliderMax, vSlider, on_trackbar );
-
-    cv::waitKey(0);
+    double t1 = (x.x * d2.y - x.y * d2.x)/cross;
+    Point2f r = line1_a + d1 * t1;
+    return r;
 }
+
+void concat_lines(Point2f line1_a, Point2f line1_b, Point2f line2_a, Point2f line2_b, Point2f *new_line_a, Point2f *new_line_b)
+{
+    Point2f points[4] = {line1_a, line1_b, line2_a, line2_b};
+    float max_dist = 0;
+    for(uint8_t i = 0; i < 4; i++)
+        for(uint8_t j = 0; j < 4; j++)
+        {
+            float dist = get_distance(points[i], points[j]);
+            if(dist > max_dist )
+            {
+                max_dist = dist;
+                *new_line_a = points[i];
+                *new_line_b = points[j];
+            }
+        }
+    return;
+}
+
 
 void displayImage(const Mat &image, string name)
 {
@@ -72,10 +101,10 @@ using namespace cv;
 
 cv::Mat performCanny(cv::Mat in_image)
 {
-    GaussianBlur( in_image, in_image, Size(3,3), 0, 0, BORDER_DEFAULT );
+    GaussianBlur( in_image, in_image, Size(7,7), 0, 0, BORDER_DEFAULT );
 
-    int edgeThresh = 1;
-    int low_thres = 75;
+    //int edgeThresh = 1;
+    int low_thres = 50;
     int ratio = 3;
     int kernel_size = 3;
     cv::Mat detected_edges;
@@ -84,29 +113,15 @@ cv::Mat performCanny(cv::Mat in_image)
     return detected_edges;
 }
 
-cv::Mat performSobel(cv::Mat in_image)
+cv::Mat applyHsvThreshold(const cv::Mat &inImg, const cv::Scalar minThresh, const cv::Scalar maxThresh)
 {
-    cv::Mat BW_image;
-    cv::Mat grad;
-    GaussianBlur( in_image, in_image, Size(3,3), 0, 0, BORDER_DEFAULT );
-    cv::cvtColor(in_image, BW_image, CV_BGR2GRAY);
-    int scale = 1;
-    int delta = 0;
-    int ddepth = CV_16S;
-    cv::Mat grad_x, grad_y;
-    cv::Mat abs_grad_x, abs_grad_y;
-    /// Gradient X
-    cv::Sobel( BW_image, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT );
-    cv::convertScaleAbs( grad_x, abs_grad_x );
-  /// Gradient Y
-    cv::Sobel( BW_image, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT );
-    convertScaleAbs( grad_y, abs_grad_y );
-    addWeighted( abs_grad_x, 0.5, abs_grad_y, 0.5, 0, grad );
-    std::cout << (int)abs_grad_x.at<uchar>(683, 98) << std::endl;
-    std::cout << (int)abs_grad_y.at<uchar>(683, 98) << std::endl;
-
-    return grad;
+    cv::Mat dstImg;
+    cv::Mat hsvImg;
+    cv::cvtColor(inImg, hsvImg, CV_BGR2HSV);    // Convert image to HSV
+    cv::inRange(hsvImg, minThresh, maxThresh, dstImg);
+    return dstImg;
 }
+
 /** @function main */
 int main( int argc, char** argv )
 {
@@ -116,38 +131,174 @@ int main( int argc, char** argv )
  //They need to be black on one side and white on another (within some threshold.)
  cv::Mat img = cv::imread(argv[1]);
   cv::Mat detected_edges = performCanny(img);
-  displayImage(detected_edges, "test");
+  //displayImage(detected_edges, "test");
   cv::Mat cdst;
-  cvtColor(detected_edges, cdst, CV_GRAY2BGR);
+  cv::Mat cdst2;
 
-  /*vector<Vec2f> lines;
-  HoughLines(detected_edges, lines, 1, CV_PI/180, 100, 0, 0 );
-  for( size_t i = 0; i < lines.size(); i++ )
-  {
-     float rho = lines[i][0], theta = lines[i][1];
-     Point pt1, pt2;
-     double a = cos(theta), b = sin(theta);
-     double x0 = a*rho, y0 = b*rho;
-     pt1.x = cvRound(x0 + 1000*(-b));
-     pt1.y = cvRound(y0 + 1000*(a));
-     pt2.x = cvRound(x0 - 1000*(-b));
-     pt2.y = cvRound(y0 - 1000*(a));
-     line( cdst, pt1, pt2, Scalar(0,0,255), 3, CV_AA);
- }*/
+
+ cv::Mat black_areas = applyHsvThreshold(img, cv::Scalar(0, 0, 0), cv::Scalar(255, 130, 100));
+
+ cv::Mat kernel;
+ kernel = cv::Mat::ones(3,3,CV_8UC1);
+ displayImage(black_areas, "test_black2");
+
+ cv::dilate(black_areas,black_areas,kernel);
+ cv::erode(black_areas,black_areas,kernel);
+
+ displayImage(black_areas, "test_black1");
+
+ cv::Mat white_areas = applyHsvThreshold(img, cv::Scalar(0, 0, 100), cv::Scalar(255, 75, 255));
+ cv::Mat big_white_areas = white_areas;
+
+ cv::dilate(white_areas,white_areas,kernel);
+ cv::erode(white_areas,white_areas,kernel);
+
+ displayImage(white_areas, "test_white1");
+
+ cv::dilate(big_white_areas,big_white_areas,kernel);
+ cv::erode(big_white_areas,big_white_areas,kernel);
+ cv::erode(big_white_areas,big_white_areas,kernel);
+ cv::dilate(big_white_areas,big_white_areas,kernel);
+ kernel = cv::Mat::ones(70,70   ,CV_8UC1);
+ cv::dilate(big_white_areas,big_white_areas,kernel);
+ cv::erode(big_white_areas,big_white_areas,kernel);
+
+
+for(int32_t x = 0; x < big_white_areas.cols; x++)
+    for(int32_t y = 0; y < big_white_areas.rows; y++)
+    {
+        //std::cout << (int)big_white_areas.at<uchar>(x,y) << std::endl;
+
+        if(big_white_areas.at<uchar>(y,x) == 0)
+            detected_edges.at<uchar>(y,x) = 0;
+
+    }
+
+ cvtColor(detected_edges, cdst, CV_GRAY2BGR);
+ cvtColor(detected_edges, cdst2, CV_GRAY2BGR);
+ displayImage(detected_edges, "test_white3424");
+
+ //Remove all edges not within white regions
+
+ //displayImage(big_white_areas, "test_white2");
+
+
+
+
+ //displayImage(black_areas, "test_black");
+ //displayImage(white_areas, "test_white");
+
  std::vector<Vec4i> lines;
- HoughLinesP(detected_edges, lines, 1, CV_PI/180, 50, 200, 100 );
- for( size_t i = 0; i < lines.size(); i++ )
- {
-   Vec4i l = lines[i];
-   line( cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(0,0,255), 3, CV_AA);
- }
+ HoughLinesP(detected_edges, lines, 1, CV_PI/180., 75, 150, 100 );
+ std::vector<Vec4i> sorted_lines;
+
+
+bool done_removing_lines = false;
+bool removed_line = false;
+for( size_t i = 0; i < lines.size(); i++ )
+{
+  Vec4i l = lines[i];
+  line( cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(rand() %150 + 50 , rand() %150 + 50 ,rand() %150 + 50), 1, CV_AA);
+}
+
+std::cout << lines.size() << std::endl;
+while(!done_removing_lines)
+{
+    for(auto it_outer = std::begin(lines); it_outer != std::end(lines); ++it_outer)
+    {
+        Vec4i line_outer = *it_outer;
+        Point2f outer_a = Point(line_outer[0], line_outer[1]);
+        Point2f outer_b = Point(line_outer[2], line_outer[3]);
+
+        removed_line = false;
+        for(auto it_inner = it_outer + 1  ; it_inner != std::end(lines); ++it_inner)
+        {
+            //if(it_inner == it_outer) continue;
+            if(removed_line) break;
+            Vec4i line_inner = *it_inner;
+            Point2f inner_a =  Point(line_inner[0], line_inner[1]);
+            Point2f inner_b =  Point(line_inner[2], line_inner[3]);
+
+            float distance = get_distance(outer_a, outer_b, inner_a, inner_b);
+            float angle_diff = abs(get_angle(outer_a,  outer_b) - get_angle(inner_a,  inner_b));
+            //std::cout << angle_diff << std::endl;
+            if(distance < 5)
+            {
+                //std::cout << "A:" << angle_diff << std::endl;
+                //std::cout << "D:" << distance << std::endl;
+                //std::cout << outer_a << "\t" << outer_b  << "\t" << inner_a << "\t" << inner_b << "\t" << std::endl;
+                if(angle_diff < 0.09 )
+                {
+                    //Find the points in the two lines which is furthest from each other, and make a new line from them
+                    Point2f new_line_a;
+                    Point2f new_line_b;
+                    concat_lines(inner_a, inner_b, outer_a, outer_b, &new_line_a, &new_line_b);
+                    line_outer[0] = new_line_a.x; line_outer[1] = new_line_a.y;
+                    line_outer[2] = new_line_b.x; line_outer[3] = new_line_b.y;
+                    //std::cout << inner_a << "\t" << inner_b << "\t" << outer_a << "\t" << outer_b << "\t" << new_line_a << "\t" << new_line_b << std::endl;
+                    lines.erase(it_inner);
+                    removed_line = true;
+                    break;
+                }
+            }
+        }
+        if(removed_line) break;
+    }
+    if(!removed_line) done_removing_lines= true;
+}
+std::cout << lines.size() << std::endl;
+
+for(auto &line : lines)
+{
+    Point2f midpoint = Point2f((line[0] + line[2])/2, (line[1] + line[3])/2);
+    cv::circle(cdst, midpoint, 5, Scalar(255,0,255));
+    //std::cout << (int)line[0] << "\t" << (int)line[1] << "\t" << (int)line[2] << "\t"  << (int)line[3] << "\t"  << std::endl;
+    Point2f direction = get_direction_vector(Point2f(line[0],line[1]), Point2f(line[2], line[3]));
+    Point2f perpendicular = Point2f(-direction.y, direction.x);
+    bool white_left = false;
+    bool black_left = false;
+    bool white_right = false;
+    bool black_right = false;
+
+    for(int8_t i = 0; i < 10; i++)
+    {
+        Point2f point_left = midpoint + perpendicular * (int)i;
+        Point2f point_right = midpoint + perpendicular * -(int)i;
+        white_left |= white_areas.at<uchar>(point_left);
+        black_left |= black_areas.at<uchar>(point_left);
+        white_right |= white_areas.at<uchar>(point_right);
+        black_right |= black_areas.at<uchar>(point_right);
+    //std::cout << (int)black_areas.at<uchar>(point_right) << std::endl;
+    cv::circle(cdst, point_left, 3, Scalar(127,0,255));
+    cv::circle(cdst, point_right, 3, Scalar(127,0,255));
+   }
+    if((white_left && black_right) || (black_left && white_right) or true)
+    {
+        sorted_lines.push_back(line);
+    }
+}
+
+
+
+for( size_t i = 0; i < sorted_lines.size(); i++ )
+{
+  Vec4i line = sorted_lines[i];
+  Point2f midpoint = Point2f((line[0] + line[2])/2, (line[1] + line[3])/2);
+  cv::circle(cdst2, midpoint, 5, Scalar(255,0,255));
+
+  cv::line( cdst2, Point(line[0], line[1]), Point(line[2], line[3]), Scalar(rand() %150 + 50, rand() %150 + 50,rand() %150 + 50), 1, CV_AA);
+}
+
   cv::Mat dst;
   dst = Scalar::all(0);
   img.copyTo( dst, detected_edges);
-  displayImage(dst, "test2");
+  //displayImage(dst, "test2");
  // cv::Mat gradient = performSobel(img);
-  displayImage(performSobel(img), "Test3");
+  //displayImage(performSobel(img), "Test3");
   displayImage(cdst, "test4");
+
+  displayImage(cdst2, "test3");
+
   waitKey(0);
   return 0;
   }
