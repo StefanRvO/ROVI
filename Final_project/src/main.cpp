@@ -21,7 +21,12 @@ int vSliderMin = 0;
 int vSliderMax = 255;
 
 
-
+void displayImage(string name, cv::Mat &image)
+{
+  cv::namedWindow(name, cv::WINDOW_NORMAL);
+  cv::imshow(name, image);
+  cv::resizeWindow(name, 600,600);
+}
 
 cv::Mat getThresholdImage(const cv::Mat &inImg)
 {
@@ -105,7 +110,7 @@ void on_trackbar( int, void* )
     // Segmentate image from HSV trackbar values
     cv::Mat dstImg;
     cv::inRange(hsvImg, cv::Scalar(hSliderMin, sSliderMin, vSliderMin), cv::Scalar(hSliderMax, sSliderMax, vSliderMax), dstImg);
-    imshow( "HSV Colour Segmentation", dstImg);
+    displayImage( "HSV Colour Segmentation", dstImg);
 }
 
 
@@ -135,18 +140,43 @@ cv::Mat applyHsvThreshold(const cv::Mat &inImg, const cv::Scalar minThresh, cons
     return dstImg;
 }
 
+/*
+cv::vector<std::vector<cv::Point>> getContours(cv::Mat inImg, int compactThresh, int areaTresh)
+{
+    // Find contours which have a area larger than 2000
+    cv::vector<std::vector<cv::Point> > contours;
+    std::vector<cv::Vec4i> hierarchy;
+    cv::findContours( segmentedImg, contours, hierarchy, CV_RETR_LIST, cv::CHAIN_APPROX_NONE);
+
+    // Draw the contours which have an area within certain limits
+    for(unsigned int i = 0; i< contours.size(); i++)
+    {
+        // Calculate compactness
+        float compactness = (4*M_PI * cv::contourArea(contours[i])) / (cv::arcLength(contours[i], true) * cv::arcLength(contours[i], true));
+
+        // Check for how much circle it is and the area size and remove contours under these thresholds
+        if(compactness < compactThresh && cv::contourArea(contours[i]) < areaTresh)
+        {
+            contours.erase(i);
+        }
+    }
+
+    return contours;
+}*/
+
 
 int main(int argc, char** argv)
 {
     // Read the picture and show it
     cv::Mat img = cv::imread(argv[1]);
-    imshow("Original", img);
+    displayImage("Original", img);
 
     //applyHsvTrackbar(img);
 
-    cv::Mat hsvThreshImg = applyHsvThreshold(img, cv::Scalar(100, 100, 45), cv::Scalar(120, 200, 80));
-    imshow("HSV segmentation", hsvThreshImg);
-    cv::waitKey(0);
+    cv::Mat blueHsvThreshImg = applyHsvThreshold(img, cv::Scalar(110, 60, 35), cv::Scalar(130, 200, 155));
+    //cv::Mat redHsvThreshImg = applyHsvThreshold(img, cv::Scalar(0, 145, 110), cv::Scalar(50, 220, 215));
+    displayImage("HSV segmentation", blueHsvThreshImg);
+    //cv::waitKey(0);
 
 
     /*
@@ -156,15 +186,15 @@ int main(int argc, char** argv)
     //cv::waitKey(0);*/
 
     // Dilate and erode
-    cv::Mat segmentedImg = hsvThreshImg.clone();
+    cv::Mat segmentedImg = blueHsvThreshImg.clone();
     cv::Mat kernel = cv::Mat::ones(3,3,CV_8UC1);
     cv::dilate(segmentedImg,segmentedImg,kernel);
     cv::erode(segmentedImg,segmentedImg,kernel);
     kernel = cv::Mat::ones(13,13,CV_8UC1);
     cv::erode(segmentedImg,segmentedImg,kernel);
     cv::dilate(segmentedImg,segmentedImg,kernel);
-    imshow("Dialate and erode", segmentedImg);
-    cv::waitKey(0);
+    displayImage("Dialate and erode", segmentedImg);
+    //cv::waitKey(0);
 
 
     // OBS stolen find contours which have a area larger than 2000
@@ -179,7 +209,7 @@ int main(int argc, char** argv)
         float compactness = (4*M_PI * cv::contourArea(contours[i])) / (cv::arcLength(contours[i], true) * cv::arcLength(contours[i], true));
 
         // Check for how much circle it is and the area size
-        if(compactness > 0.7 && cv::contourArea(contours[i]) > 1000)
+        if(compactness > 0.75 && cv::contourArea(contours[i]) > 2000)    // 1000 var godt til blå
         {
 
             cv::Scalar color = cv::Scalar(255, 255, 255);
@@ -187,8 +217,8 @@ int main(int argc, char** argv)
         }
     }
 
-    cv::namedWindow( "Contours");
-    imshow( "Contours", drawing );
+    //cv::namedWindow( "Contours");
+    displayImage( "Contours", drawing );
     cv::waitKey(0);
 
 
@@ -223,7 +253,7 @@ int main(int argc, char** argv)
 
 /* Test on all images
 
-for i in ../images/marker_color/*.png; do
+for i in ../images/marker_color_hard/*.png; do
     ./main $i
 done
 
