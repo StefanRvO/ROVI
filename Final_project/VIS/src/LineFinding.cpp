@@ -8,139 +8,32 @@
 #include <vector>
 #include <algorithm>
 #include <cstdlib>
+#include "helper_funcs.hpp"
 
 using namespace std;
 using namespace cv;
 
 
 
-float get_distance(Point2f line_a, Point2f line_b, Point2f p)
+
+
+cv::Mat performCanny(cv::Mat in_image, int threshold, float ratio = 3, bool convert = true, bool blur = true)
 {
-    double num = abs((line_b.x - line_a.x) * (line_a.y - p.y) - (line_a.x - p.x) * (line_b.y - line_a.y));
-    double denum = sqrt(pow((line_b.y - line_a.y), 2) + pow((line_b.x - line_a.x), 2));
-    return num/denum;
-}
-float get_distance(Point2f p1, Point2f p2)
-{
-    Point2f diff = p1 - p2;
-    return sqrt(diff.x * diff.x + diff.y * diff.y);
-}
-float get_distance(Point2f line1_a, Point2f line1_b, Point2f line2_a, Point2f line2_b)
-{
-    //We find the minimum of the four possible distances
-    float maximum = get_distance(line1_a, line1_b, line2_a);
-    maximum = max(maximum, get_distance(line1_a, line1_b, line2_b));
-    maximum = max(maximum, get_distance(line2_a, line2_b, line1_a));
-    maximum = max(maximum, get_distance(line2_a, line2_b, line1_b));
-    return maximum;
-}
-
-Point2f get_direction_vector(Point2f line_a, Point2f line_b)
-{
-    Point2f direction = Point2f(line_a.x - line_b.x, line_a.y - line_b.y);
-    double mag = sqrt(direction.x * direction.x + direction.y * direction.y);
-    direction.x /= mag;
-    direction.y /= mag;
-    //Make sure the direction have always the same sign
-    if(direction.x < 0) return -direction;
-    return direction;
-}
-float get_angle(Point2f line1_a, Point2f line1_b)
-{
-    Point2f direction = get_direction_vector(line1_a, line1_b);
-    return fmod(std::atan(direction.y/direction.x) + CV_PI * 2,CV_PI);
-}
-
-float get_angle_diff(Point2f line1_a, Point2f line1_b, Point2f line2_a, Point2f line2_b)
-{
-    Point2f direction1 = get_direction_vector(line1_a, line1_b);
-    Point2f direction2 = get_direction_vector(line2_a, line2_b);
-    float angle1 = fmod(std::atan2(direction1.y,direction1.x) + CV_PI, CV_PI);
-    float angle2 = fmod(std::atan2(direction2.y,direction2.x) + CV_PI, CV_PI);
-
-    float tmp = min(abs(angle1 - angle2), abs(angle2 - angle1));
-    if(tmp > CV_PI/2) return CV_PI - tmp;
-    return tmp;
-}
-
-Point2f find_intersection(Point2f line1_a, Point2f line1_b, Point2f line2_a, Point2f line2_b)
-{
-    Point2f x = line2_a - line1_a;
-    Point2f d1 = line1_b - line1_a;
-    Point2f d2 = line2_b - line2_a;
-
-    float cross = d1.x*d2.y - d1.y*d2.x;
-    if (abs(cross) < /*EPS*/1e-8)
-        return Point2f(-1,-1);
-
-    double t1 = (x.x * d2.y - x.y * d2.x)/cross;
-    Point2f r = line1_a + d1 * t1;
-    return r;
-}
-bool does_intersect(Point2f line1_a, Point2f line1_b, Point2f line2_a, Point2f line2_b)
-{
-    //Checks if the lines intersect and the intersection point is between the start and end points
-    Point2f intersection = find_intersection(line1_a, line1_b, line2_a, line2_b);
-    //std::cout << intersection << "\t" << line1_a << "\t" << line1_b << "\t" << line2_a << "\t" << line2_b << std::endl;
-
-    if(intersection == Point2f(-1,-1)) return false;
-    if(intersection.y > max(line1_a.y, line1_b.y) or intersection.y > max(line2_a.y, line2_b.y))
-        return false;
-    if(intersection.y < min(line1_a.y, line1_b.y) or intersection.y < min(line2_a.y, line2_b.y))
-        return false;
-    if(intersection.x < min(line1_a.x, line1_b.x) or intersection.x < min(line2_a.x, line2_b.x))
-        return false;
-    if(intersection.x > max(line1_a.x, line1_b.x) or intersection.x > max(line2_a.x, line2_b.x))
-        return false;
-
-    return true;
-
-}
-
-void concat_lines(Point2f line1_a, Point2f line1_b, Point2f line2_a, Point2f line2_b, Point2f *new_line_a, Point2f *new_line_b)
-{
-    Point2f points[4] = {line1_a, line1_b, line2_a, line2_b};
-    float max_dist = 0;
-    for(uint8_t i = 0; i < 4; i++)
-        for(uint8_t j = 0; j < 4; j++)
-        {
-            float dist = get_distance(points[i], points[j]);
-            if(dist > max_dist )
-            {
-                max_dist = dist;
-                *new_line_a = points[i];
-                *new_line_b = points[j];
-            }
-        }
-    return;
-}
-
-
-void displayImage(const Mat &image, string name)
-{
-  namedWindow(name, WINDOW_NORMAL);
-  cv::imshow(name, image);
-  cv::resizeWindow(name, 600,600);
-}
-
-
-using namespace cv;
-
-
-
-
-
-cv::Mat performCanny(cv::Mat in_image)
-{
-    GaussianBlur( in_image, in_image, Size(7,7), 0, 0, BORDER_DEFAULT );
+    if(blur)
+        GaussianBlur( in_image, in_image, Size(7,7), 0, 0, BORDER_DEFAULT );
 
     //int edgeThresh = 1;
-    int low_thres = 50;
-    int ratio = 3;
     int kernel_size = 3;
     cv::Mat detected_edges;
-    cv::cvtColor(in_image, detected_edges, CV_BGR2GRAY);
-    Canny( detected_edges, detected_edges, low_thres, low_thres*ratio, kernel_size );
+    if(convert)
+    {
+        cv::cvtColor(in_image, detected_edges, CV_BGR2GRAY);
+        Canny( detected_edges, detected_edges, threshold, threshold*ratio, kernel_size );
+    }
+    else
+    {
+        Canny( in_image , detected_edges, threshold, threshold*ratio, kernel_size );
+    }
     return detected_edges;
 }
 
@@ -161,7 +54,7 @@ int main( int argc, char** argv )
  //verify the lines by checking the colour on each side using the gradient.
  //They need to be black on one side and white on another (within some threshold.)
  cv::Mat img = cv::imread(argv[1]);
-  cv::Mat detected_edges = performCanny(img);
+  cv::Mat detected_edges = performCanny(img, 50);
   //displayImage(detected_edges, "test");
   cv::Mat cdst;
   cv::Mat cdst2;
@@ -187,14 +80,16 @@ int main( int argc, char** argv )
 
  displayImage(white_areas, "test_white1");
 
+ kernel = cv::Mat::ones(10,10   ,CV_8UC1);
  cv::dilate(big_white_areas,big_white_areas,kernel);
  cv::erode(big_white_areas,big_white_areas,kernel);
- cv::erode(big_white_areas,big_white_areas,kernel);
  cv::dilate(big_white_areas,big_white_areas,kernel);
- kernel = cv::Mat::ones(70,70   ,CV_8UC1);
- cv::dilate(big_white_areas,big_white_areas,kernel);
- cv::erode(big_white_areas,big_white_areas,kernel);
 
+
+
+std::vector<std::vector<cv::Point> > contours;
+std::vector<cv::Vec4i> hierarchy;
+cv::Mat canny_countour = performCanny(img, 15,3, true, false);
 
 for(int32_t x = 0; x < big_white_areas.cols; x++)
     for(int32_t y = 0; y < big_white_areas.rows; y++)
@@ -202,19 +97,77 @@ for(int32_t x = 0; x < big_white_areas.cols; x++)
         //std::cout << (int)big_white_areas.at<uchar>(x,y) << std::endl;
 
         if(big_white_areas.at<uchar>(y,x) == 0)
-            detected_edges.at<uchar>(y,x) = 0;
+            canny_countour.at<uchar>(y,x) = 0;
 
     }
 
- cvtColor(detected_edges, cdst, CV_GRAY2BGR);
- cvtColor(detected_edges, cdst2, CV_GRAY2BGR);
- cvtColor(detected_edges, cdst3, CV_GRAY2BGR);
+displayImage(canny_countour, "canny");
+
+kernel = cv::Mat::ones(5,5   ,CV_8UC1);
+cv::dilate(canny_countour,canny_countour,kernel);
+
+displayImage(canny_countour, "canny2");
+
+cv::findContours( canny_countour, contours, hierarchy, CV_RETR_LIST, cv::CHAIN_APPROX_NONE);
+
+
+// Draw the contours which have an area within certain limits
+cv::Mat drawing = cv::Mat::zeros(big_white_areas.size(), CV_8UC3);
+std::vector<std::vector<cv::Point> > approx_countour;
+approx_countour.resize(contours.size());
+float max_area_contour = 0;
+int max_contour = 0;
+for(unsigned int i = 0; i< contours.size(); i++)
+{
+    double epsilon = 0.06*cv::arcLength(contours[i],true);
+    cv::approxPolyDP(contours[i],approx_countour[i],epsilon,false);
+    cv::Scalar color = cv::Scalar(rand() %150 + 50 , rand() %150 + 50 ,rand() %150 + 50);
+    float approx_area = cv::contourArea(approx_countour[i]);
+    float perimeter = cv::arcLength(approx_countour[i], true);
+    if(approx_area >= (perimeter/4. * perimeter/4.) * 0.8 and  approx_area <= (perimeter/4. * perimeter/4.) * 1.2)
+    {
+        if(approx_area > max_area_contour)
+        {
+            max_area_contour = approx_area;
+            max_contour = i;
+        }
+    }
+}
+cv::drawContours( drawing, approx_countour, max_contour, cv::Scalar(255, 255,255),CV_FILLED );
+kernel = cv::Mat::ones(70,70   ,CV_8UC1);
+cv::dilate(drawing,drawing,kernel);
+
+
+cv::namedWindow( "Contours");
+imshow( "Contours", drawing );
+cv::waitKey(0);
+
+
+
+
+ cv::cvtColor(drawing, drawing, CV_BGR2GRAY);
+
+
+
+ for(int32_t x = 0; x < big_white_areas.cols; x++)
+     for(int32_t y = 0; y < big_white_areas.rows; y++)
+     {
+         //std::cout << (int)big_white_areas.at<uchar>(x,y) << std::endl;
+
+         if(big_white_areas.at<uchar>(y,x) == 0 or drawing.at<uchar>(y,x) == 0)
+             detected_edges.at<uchar>(y,x) = 0;
+
+     }
+
+     cvtColor(detected_edges, cdst, CV_GRAY2BGR);
+     cvtColor(detected_edges, cdst2, CV_GRAY2BGR);
+     cvtColor(detected_edges, cdst3, CV_GRAY2BGR);
 
  displayImage(detected_edges, "test_white3424");
 
  //Remove all edges not within white regions
 
- //displayImage(big_white_areas, "test_white2");
+ displayImage(big_white_areas, "test_white2");
 
 
 
