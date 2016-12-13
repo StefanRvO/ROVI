@@ -1,9 +1,14 @@
-cmake_minimum_required(VERSION 2.6 FATAL_ERROR)
+cmake_minimum_required(VERSION 2.8 FATAL_ERROR)
 project(vision)
-set (CMAKE_CXX_FLAGS "-Ofast -Wall -g -std=c++11")
+
 find_package(OpenCV REQUIRED)
 
-add_executable(main src/main.cpp)
+set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
-target_link_libraries(main ${OpenCV_LIBS})
+SET( CMAKE_CXX_FLAGS  "	${CMAKE_CXX_FLAGS} -std=c++11 -Ofast -Wall -Wextra -Wpointer-arith -ffunction-sections -fdata-sections -Wcast-qual -g -Wno-unused-local-typedefs -Wno-unused-parameter" )
+
+add_subdirectory("VIS")
+add_subdirectory("ROB")
 
