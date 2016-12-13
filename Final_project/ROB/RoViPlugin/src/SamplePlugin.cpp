@@ -1,25 +1,11 @@
 #include "SamplePlugin.hpp"
 
-#include <rws/RobWorkStudio.hpp>
+
 
 #include <QPushButton>
 
-#include <rw/loaders/ImageLoader.hpp>
-#include <rw/loaders/WorkCellFactory.hpp>
 #include "Vision.hpp"
 
-using namespace rw::common;
-using namespace rw::graphics;
-using namespace rw::kinematics;
-using namespace rw::loaders;
-using namespace rw::models;
-using namespace rw::sensor;
-using namespace rwlibs::opengl;
-using namespace rwlibs::simulation;
-
-using namespace rws;
-
-using namespace cv;
 
 cv::Mat globalImg;
 
@@ -105,6 +91,12 @@ void SamplePlugin::open(WorkCell* workcell)
 				_framegrabber->init(gldrawer);
 			}
 		}
+
+        // Find and create a pointer to the device
+        device = _wc->findDevice("PA10");
+
+        // Get default state
+        state = _wc->getDefaultState();
 	}
 }
 
@@ -138,6 +130,23 @@ Mat SamplePlugin::toOpenCVImage(const Image& img) {
 }
 
 void SamplePlugin::btnPressed() {
+    /*
+    state= getRobWorkStudio()->getState();
+    Q qVector = device->getQ(state);
+    std::cout << qVector << std::endl;
+    Q dq(7,1);
+    qVector += dq;
+    device->setQ(qVector, state);
+    getRobWorkStudio()->setState(state);
+    std::cout << qVector << std::endl;
+
+    auto marker = _wc->findFrame("Marker");
+    std::vector<Transform3D<float> > test = readMotionFile("/home/student/Dropbox/RobTek/Cand_1_semester/Robotics/Mandatory/ROVI/Final_project/ROB/RoViPlugin/motions/MarkerMotionSlow.txt");
+    */
+
+    markerMotions = readMotionFile("/home/student/Dropbox/RobTek/Cand_1_semester/Robotics/Mandatory/ROVI/Final_project/ROB/RoViPlugin/motions/MarkerMotionSlow.txt");
+
+
 	QObject *obj = sender();
 	if(obj==_btn0){
 		log().info() << "Button 0\n";
@@ -161,6 +170,31 @@ void SamplePlugin::btnPressed() {
 }
 
 void SamplePlugin::timer() {
+
+    state = getRobWorkStudio()->getState();
+
+    // Find the marker frame and cast it to a moveable frame
+    MovableFrame* marker = (MovableFrame*) _wc->findFrame("Marker");
+
+    // Find the marker frame origin coordinate relative to the camera
+    Frame* cameraFrame = _wc->findFrame("CameraSim");
+    Transform3D<double> markerTransformRelativeToCam = cameraFrame->fTf(marker, state);
+    Vector3D<double> markerPosRelativeToCam = markerTransformRelativeToCam.P();
+
+    // Set the marker to a new position from the markermotion vector
+    //Transform3D<double> tmp = markerMotions[counter];
+    marker->setTransform(markerMotions[counter], state);
+
+    // Count the marker motion up with one
+    if(counter > (markerMotions.size() - 1))
+        counter = 0;
+    else
+        counter++;
+
+    // Update the state
+    getRobWorkStudio()->setState(state);
+
+
 	if (_framegrabber != NULL) {
 		// Get the image as a RW image
 		Frame* cameraFrame = _wc->findFrame("CameraSim");
@@ -168,7 +202,7 @@ void SamplePlugin::timer() {
 		const Image& image = _framegrabber->getImage();
 
 		// Convert to OpenCV image
-		Mat im = toOpenCVImage(image);
+        Mat im = toOpenCVImage(image);
 		Mat imflip;
 		cv::flip(im, imflip, 0);
 
@@ -190,6 +224,50 @@ void SamplePlugin::timer() {
 
 void SamplePlugin::stateChangedListener(const State& state) {
 	_state = state;
+}
+
+/*
+*   Reads a file with marker movements with (x,y,z,r,p,y) on each line
+*   and converts each line/move to a transformation matrix
+*   Returns a vector of all the transformation matrixes
+*/
+std::vector<Transform3D<double> > SamplePlugin::readMotionFile(std::string fileName)
+{
+
+    std::string line;
+    double x, y, z, roll, pitch, yaw;
+    RPY<double> rpy;
+    Vector3D<double> xyz;
+    std::vector<Transform3D<double> > markerMotions; // Vector of transformations (rpy and translation)
+
+    std::ifstream file(fileName);
+
+    if(file.is_open())
+    {
+        // Read each line of the file
+        while(std::getline(file,line))
+        {
+            std::stringstream lineStream(line); // Create a stream for the line string
+
+            // Read x,y,z,r,p,y from the line string
+            lineStream >> x;
+            lineStream >> y;
+            lineStream >> z;
+            lineStream >> roll;
+            lineStream >> pitch;
+            lineStream >> yaw;
+
+            rpy = RPY<double>(roll,pitch,yaw);   // Create RPY matrix
+            xyz = Vector3D<double>(x,y,z);   // Create translation vector
+
+            // Create a transformation matrix from the RPY and translation vector and put it into a vector
+            markerMotions.push_back(Transform3D<double>(xyz, rpy.toRotation3D() ));
+        }
+
+        file.close();
+    }
+
+    return markerMotions;
 }
 
 Q_EXPORT_PLUGIN(SamplePlugin);

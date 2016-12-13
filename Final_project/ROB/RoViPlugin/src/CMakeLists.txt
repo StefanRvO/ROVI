@@ -23,7 +23,7 @@ MESSAGE("-- Build type: " ${CMAKE_BUILD_TYPE})
 
 # Use RobWork
 MESSAGE("-- RobWork root: " ${RW_ROOT})
-SET(RobWork_DIR ${RW_ROOT}/cmake) 
+SET(RobWork_DIR ${RW_ROOT}/cmake)
 FIND_PACKAGE(RobWork REQUIRED)
 INCLUDE_DIRECTORIES( ${ROBWORK_INCLUDE_DIRS} )
 LINK_DIRECTORIES( ${ROBWORK_LIBRARY_DIRS} )
@@ -53,7 +53,7 @@ QT4_WRAP_CPP(MocSrcFiles SamplePlugin.hpp)
 QT4_ADD_RESOURCES(RccSrcFiles resources.qrc)
 
 # Add the source files to build (besides the Qt generated source files)
-SET(SrcFiles SamplePlugin.cpp)
+SET(SrcFiles SamplePlugin.cpp Vision.cpp Visualservoing.cpp)
 
 # The shared library to build:
 ADD_LIBRARY(SamplePlugin MODULE ${SrcFiles} ${UIS_OUT_H} ${MocSrcFiles} ${RccSrcFiles})
