@@ -42,13 +42,25 @@ Point2f get_direction_vector(Point2f line_a, Point2f line_b)
     direction.x /= mag;
     direction.y /= mag;
     //Make sure the direction have always the same sign
-    if(direction.x < 0) return - direction;
+    if(direction.x < 0) return -direction;
     return direction;
 }
 float get_angle(Point2f line1_a, Point2f line1_b)
 {
     Point2f direction = get_direction_vector(line1_a, line1_b);
-    return std::atan(direction.y / direction.x);
+    return fmod(std::atan(direction.y/direction.x) + CV_PI * 2,CV_PI);
+}
+
+float get_angle_diff(Point2f line1_a, Point2f line1_b, Point2f line2_a, Point2f line2_b)
+{
+    Point2f direction1 = get_direction_vector(line1_a, line1_b);
+    Point2f direction2 = get_direction_vector(line2_a, line2_b);
+    float angle1 = fmod(std::atan2(direction1.y,direction1.x) + CV_PI, CV_PI);
+    float angle2 = fmod(std::atan2(direction2.y,direction2.x) + CV_PI, CV_PI);
+
+    float tmp = min(abs(angle1 - angle2), abs(angle2 - angle1));
+    if(tmp > CV_PI/2) return CV_PI - tmp;
+    return tmp;
 }
 
 Point2f find_intersection(Point2f line1_a, Point2f line1_b, Point2f line2_a, Point2f line2_b)
@@ -64,6 +76,25 @@ Point2f find_intersection(Point2f line1_a, Point2f line1_b, Point2f line2_a, Poi
     double t1 = (x.x * d2.y - x.y * d2.x)/cross;
     Point2f r = line1_a + d1 * t1;
     return r;
+}
+bool does_intersect(Point2f line1_a, Point2f line1_b, Point2f line2_a, Point2f line2_b)
+{
+    //Checks if the lines intersect and the intersection point is between the start and end points
+    Point2f intersection = find_intersection(line1_a, line1_b, line2_a, line2_b);
+    //std::cout << intersection << "\t" << line1_a << "\t" << line1_b << "\t" << line2_a << "\t" << line2_b << std::endl;
+
+    if(intersection == Point2f(-1,-1)) return false;
+    if(intersection.y > max(line1_a.y, line1_b.y) or intersection.y > max(line2_a.y, line2_b.y))
+        return false;
+    if(intersection.y < min(line1_a.y, line1_b.y) or intersection.y < min(line2_a.y, line2_b.y))
+        return false;
+    if(intersection.x < min(line1_a.x, line1_b.x) or intersection.x < min(line2_a.x, line2_b.x))
+        return false;
+    if(intersection.x > max(line1_a.x, line1_b.x) or intersection.x > max(line2_a.x, line2_b.x))
+        return false;
+
+    return true;
+
 }
 
 void concat_lines(Point2f line1_a, Point2f line1_b, Point2f line2_a, Point2f line2_b, Point2f *new_line_a, Point2f *new_line_b)
@@ -134,6 +165,7 @@ int main( int argc, char** argv )
   //displayImage(detected_edges, "test");
   cv::Mat cdst;
   cv::Mat cdst2;
+  cv::Mat cdst3;
 
 
  cv::Mat black_areas = applyHsvThreshold(img, cv::Scalar(0, 0, 0), cv::Scalar(255, 130, 100));
@@ -176,6 +208,8 @@ for(int32_t x = 0; x < big_white_areas.cols; x++)
 
  cvtColor(detected_edges, cdst, CV_GRAY2BGR);
  cvtColor(detected_edges, cdst2, CV_GRAY2BGR);
+ cvtColor(detected_edges, cdst3, CV_GRAY2BGR);
+
  displayImage(detected_edges, "test_white3424");
 
  //Remove all edges not within white regions
@@ -198,15 +232,15 @@ bool removed_line = false;
 for( size_t i = 0; i < lines.size(); i++ )
 {
   Vec4i l = lines[i];
-  line( cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(rand() %150 + 50 , rand() %150 + 50 ,rand() %150 + 50), 1, CV_AA);
+  line( cdst, Point(l[0], l[1]), Point(l[2], l[3]), Scalar(rand() %150 + 50 , rand() %150 + 50 ,rand() %150 + 50), 3, CV_AA);
 }
 
-std::cout << lines.size() << std::endl;
+
 while(!done_removing_lines)
 {
     for(auto it_outer = std::begin(lines); it_outer != std::end(lines); ++it_outer)
     {
-        Vec4i line_outer = *it_outer;
+        Vec4i &line_outer = *it_outer;
         Point2f outer_a = Point(line_outer[0], line_outer[1]);
         Point2f outer_b = Point(line_outer[2], line_outer[3]);
 
@@ -215,19 +249,19 @@ while(!done_removing_lines)
         {
             //if(it_inner == it_outer) continue;
             if(removed_line) break;
-            Vec4i line_inner = *it_inner;
+            Vec4i &line_inner = *it_inner;
             Point2f inner_a =  Point(line_inner[0], line_inner[1]);
             Point2f inner_b =  Point(line_inner[2], line_inner[3]);
 
             float distance = get_distance(outer_a, outer_b, inner_a, inner_b);
-            float angle_diff = abs(get_angle(outer_a,  outer_b) - get_angle(inner_a,  inner_b));
+            float angle_diff = abs(get_angle_diff(inner_a, inner_b, outer_a, outer_b));
             //std::cout << angle_diff << std::endl;
             if(distance < 5)
             {
                 //std::cout << "A:" << angle_diff << std::endl;
                 //std::cout << "D:" << distance << std::endl;
                 //std::cout << outer_a << "\t" << outer_b  << "\t" << inner_a << "\t" << inner_b << "\t" << std::endl;
-                if(angle_diff < 0.09 )
+                if(angle_diff < CV_PI/180 * 5 )
                 {
                     //Find the points in the two lines which is furthest from each other, and make a new line from them
                     Point2f new_line_a;
@@ -246,7 +280,6 @@ while(!done_removing_lines)
     }
     if(!removed_line) done_removing_lines= true;
 }
-std::cout << lines.size() << std::endl;
 
 for(auto &line : lines)
 {
@@ -278,6 +311,55 @@ for(auto &line : lines)
     }
 }
 
+//Only keep lines with a minimum of 2 perpendicular intersections and 2 parralel lines
+std::vector<Vec4i> intersect_prunned;
+
+std::cout << sorted_lines.size() << std::endl;
+for(auto it_outer = std::begin(sorted_lines); it_outer != std::end(sorted_lines); ++it_outer)
+{
+    Vec4i line_outer = *it_outer;
+    Point2f outer_a = Point(line_outer[0], line_outer[1]);
+    Point2f outer_b = Point(line_outer[2], line_outer[3]);
+    uint16_t par_lines_cnt = 0;
+    uint16_t perp_intersect_cnt = 0;
+    int i = 0;
+    for(auto it_inner = std::begin(sorted_lines); it_inner != std::end(sorted_lines); ++it_inner)
+    {
+        if(it_inner == it_outer) continue;
+        Vec4i line_inner = *it_inner;
+        Point2f inner_a =  Point(line_inner[0], line_inner[1]);
+        Point2f inner_b =  Point(line_inner[2], line_inner[3]);
+
+        float angle_diff = abs(get_angle_diff(inner_a, inner_b, outer_a, outer_b));
+        std::cout << angle_diff  << std::endl;
+        if(angle_diff < CV_PI/180 * 15 )
+        {
+            par_lines_cnt += 1;
+        }
+
+        else if(angle_diff > CV_PI/2 - CV_PI/180 * 17 and angle_diff < CV_PI/2 + CV_PI/180 * 17 and
+            does_intersect(outer_a, outer_b, inner_a, inner_b)) //Check if lines are perpendicular +-5 deg.
+        {
+            perp_intersect_cnt += 1;
+        }
+    }
+    std::cout << line_outer << "\t" << par_lines_cnt << "\t" << perp_intersect_cnt << std::endl;
+    if(par_lines_cnt >= 2 and perp_intersect_cnt >= 2)
+    {
+        intersect_prunned.push_back(*it_outer);
+    }
+}
+
+for( size_t i = 0; i < sorted_lines.size(); i++ )
+{
+  Vec4i line = sorted_lines[i];
+  Point2f midpoint = Point2f((line[0] + line[2])/2, (line[1] + line[3])/2);
+  cv::circle(cdst3, midpoint, 5, Scalar(255,0,255));
+
+  cv::line( cdst3, Point(line[0], line[1]), Point(line[2], line[3]), Scalar(rand() %150 + 50, rand() %150 + 50,rand() %150 + 50), 3, CV_AA);
+}
+
+sorted_lines = intersect_prunned;
 
 
 for( size_t i = 0; i < sorted_lines.size(); i++ )
@@ -286,7 +368,7 @@ for( size_t i = 0; i < sorted_lines.size(); i++ )
   Point2f midpoint = Point2f((line[0] + line[2])/2, (line[1] + line[3])/2);
   cv::circle(cdst2, midpoint, 5, Scalar(255,0,255));
 
-  cv::line( cdst2, Point(line[0], line[1]), Point(line[2], line[3]), Scalar(rand() %150 + 50, rand() %150 + 50,rand() %150 + 50), 1, CV_AA);
+  cv::line( cdst2, Point(line[0], line[1]), Point(line[2], line[3]), Scalar(rand() %150 + 50, rand() %150 + 50,rand() %150 + 50), 3, CV_AA);
 }
 
   cv::Mat dst;
@@ -296,8 +378,9 @@ for( size_t i = 0; i < sorted_lines.size(); i++ )
  // cv::Mat gradient = performSobel(img);
   //displayImage(performSobel(img), "Test3");
   displayImage(cdst, "test4");
+  displayImage(cdst3, "test5");
 
-  displayImage(cdst2, "test3");
+  displayImage(cdst2, "test6");
 
   waitKey(0);
   return 0;
