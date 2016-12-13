@@ -10,5 +10,5 @@ set (CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 SET( CMAKE_CXX_FLAGS  "	${CMAKE_CXX_FLAGS} -std=c++11 -Ofast -Wall -Wextra -Wpointer-arith -ffunction-sections -fdata-sections -Wcast-qual -g -Wno-unused-local-typedefs -Wno-unused-parameter" )
 
 add_subdirectory("VIS")
-add_subdirectory("ROB")
+#add_subdirectory("ROB")
 

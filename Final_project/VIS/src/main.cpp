@@ -145,7 +145,7 @@ cv::Mat applyHsvThreshold(const cv::Mat &inImg, const cv::Scalar minThresh, cons
 *   Dialate and erodes the image, where after it extracts the contours within a given compact and area threshold
 *   The fitting contours are herafter returned as a vector
 */
-cv::vector<std::vector<cv::Point>> getContours(cv::Mat inImg, float compactThresh, int areaTresh)
+std::vector<std::vector<cv::Point>> getContours(cv::Mat inImg, float compactThresh, int areaTresh)
 {
     // Dilate and erode
     cv::Mat kernel = cv::Mat::ones(3,3,CV_8UC1);
@@ -156,8 +156,8 @@ cv::vector<std::vector<cv::Point>> getContours(cv::Mat inImg, float compactThres
     cv::dilate(inImg,inImg,kernel);
 
     // Find contours
-    cv::vector<std::vector<cv::Point> > contours;
-    cv::vector<std::vector<cv::Point> > acceptedContours;
+    std::vector<std::vector<cv::Point> > contours;
+    std::vector<std::vector<cv::Point> > acceptedContours;
     std::vector<cv::Vec4i> hierarchy;
     cv::findContours( inImg, contours, hierarchy, CV_RETR_LIST, cv::CHAIN_APPROX_NONE);
 
@@ -194,7 +194,7 @@ int main(int argc, char** argv)
     cv::Mat img = cv::imread(argv[1]);
     displayImage("Original", img);
 
-    //applyHsvTrackbar(img);
+    applyHsvTrackbar(img);
 
     cv::Mat blueHsvThreshImg = applyHsvThreshold(img, cv::Scalar(110, 60, 35), cv::Scalar(130, 200, 155));
     cv::Mat redHsvThreshImg = applyHsvThreshold(img, cv::Scalar(0, 145, 110), cv::Scalar(50, 220, 215));

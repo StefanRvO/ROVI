@@ -1,5 +1,5 @@
 #include "helper_funcs.hpp"
-
+#include <unordered_set>
 using namespace std;
 using namespace cv;
 
@@ -24,14 +24,14 @@ float get_distance(Point2f line1_a, Point2f line1_b, Point2f line2_a, Point2f li
     return maximum;
 }
 
-Point2f get_direction_vector(Point2f line_a, Point2f line_b)
+Point2f get_direction_vector(Point2f line_a, Point2f line_b, bool fix_sign)
 {
     Point2f direction = Point2f(line_a.x - line_b.x, line_a.y - line_b.y);
     double mag = sqrt(direction.x * direction.x + direction.y * direction.y);
     direction.x /= mag;
     direction.y /= mag;
     //Make sure the direction have always the same sign
-    if(direction.x < 0) return -direction;
+    if(fix_sign and direction.x < 0) return -direction;
     return direction;
 }
 float get_angle(Point2f line1_a, Point2f line1_b)
@@ -104,10 +104,83 @@ void concat_lines(Point2f line1_a, Point2f line1_b, Point2f line2_a, Point2f lin
     return;
 }
 
+cv::Point2f getCOG(std::vector<cv::Point> contour)
+{
+    /// Get the moment of the contour
+    cv::Moments mu = moments( contour, false );
+
+    // Calculate and return the center of gravity
+    return cv::Point2f( mu.m10/mu.m00 , mu.m01/mu.m00);
+}
+
+
 
 void displayImage(const Mat &image, string name)
 {
   namedWindow(name, WINDOW_NORMAL);
   cv::imshow(name, image);
-  cv::resizeWindow(name, 800,800);
+  cv::resizeWindow(name, 1000,1000);
+}
+
+
+//Shamelessly stolen from stackoverflow
+//http://stackoverflow.com/questions/25197805/how-to-delete-repeating-coordinates-of-vectorpoint2f
+void remove_duplicates(std::vector<Point2f>& vec)
+{
+    for(auto &point : vec)
+    {
+        point = (cv::Point)point;
+    }
+    std::unordered_set<Point2f> pointset;  // unordered_set is a hash table implementation
+
+    auto itor = vec.begin();
+    while (itor != vec.end())
+    {
+        if (pointset.find(*itor) != pointset.end())   // O(1) lookup time for unordered_set
+        {
+            itor = vec.erase(itor); // vec.erase returns the next valid iterator
+        }
+        else
+        {
+            pointset.insert(*itor);
+            itor++;
+        }
+    }
+}
+
+void remove_duplicates(std::vector<Marker_candidate>& vec)
+{
+    for(auto &point : vec)
+    {
+        point.center = (cv::Point)point.center;
+    }
+    std::unordered_set<Marker_candidate> pointset;  // unordered_set is a hash table implementation
+
+    auto itor = vec.begin();
+    while (itor != vec.end())
+    {
+        if (pointset.find(*itor) != pointset.end())   // O(1) lookup time for unordered_set
+        {
+            itor = vec.erase(itor); // vec.erase returns the next valid iterator
+        }
+        else
+        {
+            pointset.insert(*itor);
+            itor++;
+        }
+    }
+}
+
+bool operator==(const Point2f& pt1, const Point2f& pt2)
+{
+    return ((pt1.x == pt2.x) && (pt1.y == pt2.y));
+}
+
+bool operator==(const Marker_candidate &pt1, const Marker_candidate &pt2)
+{
+    return ((pt1.center.x == pt2.center.x) && (pt1.center.y == pt2.center.y));
+}
+bool is_left(cv::Point2f line_a, cv::Point2f line_b, cv::Point2f p)
+{
+    return ((line_b.x - line_a.x) * (p.y - line_a.y) - (line_b.y - line_a.y) * (p.x - line_a.x) > 0);
 }
