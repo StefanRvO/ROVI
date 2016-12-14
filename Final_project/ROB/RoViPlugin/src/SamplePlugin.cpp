@@ -212,8 +212,8 @@ std::vector<Vector2D<double> > SamplePlugin::getVisionPoints(cv::Mat image)
     std::vector<cv::Point2f> trackedPoints = vision.trackPicture(image);
 
     // Get a image showing the tracked image from vision and set it to camera view
-    cv::Mat trackedImage = vision.getVisionViewImage(image,trackedPoints);
-    setCameraViewImage(trackedImage);
+    //cv::Mat trackedImage = vision.getVisionViewImage(image,trackedPoints);
+    setCameraViewImage(image);
 
 
     // Convert from Point2f to Vector2D
@@ -221,7 +221,7 @@ std::vector<Vector2D<double> > SamplePlugin::getVisionPoints(cv::Mat image)
 
     for(auto &point : trackedPoints)
     {
-        Vector2D<double> new_point(point.x, point.y);
+        Vector2D<double> new_point(-(point.x - image.cols / 2), (point.y - image.rows / 2));
         convertedPoints.push_back(new_point);
     }
 
@@ -315,6 +315,7 @@ std::vector<Transform3D<double> > SamplePlugin::readMotionFile(std::string fileN
 
     return markerMotions;
 }
+
 std::vector<Vector2D<double> > SamplePlugin::get_tracker_points(double z, double f, Frame *marker, Frame *camera, int cnt)
 {
     std::vector<Vector2D<double>> points;
