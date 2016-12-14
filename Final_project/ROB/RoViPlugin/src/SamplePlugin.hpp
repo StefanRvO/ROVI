@@ -73,6 +73,9 @@ private:
     std::vector<Transform3D<double> > markerMotions;
     unsigned int counter = 0;
     VisualServoing visualservoing;
+    std::vector<double> getImagePoints(double f, double z, Frame *marker, Frame *camera);
+    cv::Mat image_stuff();
+    std::vector<double> target;
 
 
 };

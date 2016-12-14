@@ -12,28 +12,53 @@ rw::math::Jacobian VisualServoing::calculateImageJacobian(Vector2D<double> uv, c
     double u = uv[0];
     double v = uv[1];
 
-    imageJacobian(0,0) = -f/z;
+    imageJacobian(0,0) = - f / z;
     imageJacobian(0,1) = 0;
-    imageJacobian(0,2) = u/z;
-    imageJacobian(0,3) = (u*v)/f;
-    imageJacobian(0,4) = -(f*f*+u*u)/f;
+    imageJacobian(0,2) = u / z;
+    imageJacobian(0,3) = u * v / f;
+    imageJacobian(0,4) = - (f * f + u * u) / f;
     imageJacobian(0,5) = v;
     imageJacobian(1,0) = 0;
-    imageJacobian(1,1) = -f/z;
-    imageJacobian(1,2) = v/z;
-    imageJacobian(1,3) = (f*f*+u*u)/f;
-    imageJacobian(1,4) = -(u*v)/f;
-    imageJacobian(1,5) = -u;
+    imageJacobian(1,1) = - f / z;
+    imageJacobian(1,2) = v / z;
+    imageJacobian(1,3) = (f * f + v * v) / f;
+    imageJacobian(1,4) = - (u * v) / f;
+    imageJacobian(1,5) = - u;
 
     return imageJacobian;
 }
 
-Q VisualServoing::calculateDeltaQ(Vector2D<double> dUV, Vector2D<double> uv, const double z, const double f, rw::math::Jacobian Sq, rw::math::Jacobian Jq)
+Jacobian VisualServoing::calculateImageJacobian(std::vector<double> uv, float f, float z)
 {
-    std::cout << "duv: " << dUV << std::endl;
+    std::vector<Jacobian> jacobians;
 
+    for (unsigned int i = 0; i < uv.size(); i += 2) {
+        Jacobian imageJacobian(2,6);
+        imageJacobian(0,0) = - f / z;
+        imageJacobian(0,1) = 0;
+        imageJacobian(0,2) = uv[i] / z;
+        imageJacobian(0,3) = uv[i] * uv[i + 1] / f;
+        imageJacobian(0,4) = - (f * f + uv[i] * uv[i]) / f;
+        imageJacobian(0,5) = uv[i + 1];
+        imageJacobian(1,0) = 0;
+        imageJacobian(1,1) = - f / z;
+        imageJacobian(1,2) = uv[i + 1] / z;
+        imageJacobian(1,3) = (f * f + uv[i + 1] * uv[i + 1]) / f;
+        imageJacobian(1,4) = - (uv[i] * uv[i + 1]) / f;
+        imageJacobian(1,5) = - uv[i];
+        jacobians.push_back(imageJacobian);
+    }
 
-    Jacobian duvJacobian(dUV.e());
+    return mergeJacobians(jacobians);
+}
+
+Q VisualServoing::calculateDeltaQ(std::vector<double> uv, std::vector<double> target, const double z, const double f, rw::math::Jacobian Sq, rw::math::Jacobian Jq)
+{
+    last_uv.resize(uv.size());
+    std::vector<double> duv;
+    duv.resize(uv.size());
+    for(size_t i = 0; i < uv.size(); i++) duv[i] = target[i] - uv[i];
+    std::cout << duv.size() << std::endl;
 
     // Calculate image jacobian
     Jacobian imageJacobian = calculateImageJacobian(uv, f, z);
@@ -46,8 +71,8 @@ Q VisualServoing::calculateDeltaQ(Vector2D<double> dUV, Vector2D<double> uv, con
 
     auto tmp = (zImage.e() * zImageT).inverse();
 
-
-    auto y = (tmp * duvJacobian.e());
+    Jacobian duv_jac = vectorToJacobian(duv);
+    auto y = tmp * duv_jac.e();
 
     rw::math::Jacobian dq(zImageT * y);
 
@@ -61,7 +86,7 @@ Q VisualServoing::calculateDeltaQ(Vector2D<double> dUV, Vector2D<double> uv, con
    // rw::math::LinearAlgebra::EigenMatrix<double> test = (zImage * zImage.e().transpose()).e().inverse();
    // LinearAlgebra::EigenMatrix<double> test = (zImage * .e().inverse();
     //auto test1 = test *dUV;
-    
+
 }
 
 
@@ -94,3 +119,42 @@ void VisualServoing::robotCoordToImageCoord(Vector3D<double> robotCoord, double 
     return;
 }
 
+
+Jacobian VisualServoing::vectorToJacobian(std::vector<double> vector)
+{
+    int n = vector.size();
+    Jacobian jac(n,1);
+
+    for (int i = 0; i < n; i++) {
+        jac(i,0) = vector[i];
+    }
+    return jac;
+}
+
+
+
+Jacobian VisualServoing::mergeJacobians(std::vector<Jacobian> jacobians)
+{
+    int num = jacobians.size();
+    int rows = jacobians[0].size1(), columns = jacobians[0].size2();
+
+    Jacobian mergedJacobian(rows * num, columns);
+
+    for (int i = 0; i < num; i++) {
+        for (int row = 0; row < rows; row++) {
+            for (int column = 0; column < columns; column++) {
+                mergedJacobian(row + i * rows, column) = jacobians[i](row, column);
+            }
+        }
+    }
+
+    // for (size_t i = 0; i < mergedJacobian.size1(); i++) {
+    //     for (size_t j = 0; j < mergedJacobian.size2(); j++) {
+    //         std::cout << mergedJacobian(i,j) << '\t';
+    //     }
+    //     std::cout << '\n';
+    // }
+    // std::cout << '\n';
+
+    return mergedJacobian;
+}

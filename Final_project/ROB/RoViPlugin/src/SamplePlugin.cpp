@@ -155,6 +155,17 @@ void SamplePlugin::btnPressed() {
 		_bgRender->setImage(*image);
 		getRobWorkStudio()->updateAndRepaint();
 	} else if(obj==_btn1){
+        state = getRobWorkStudio()->getState();
+        MovableFrame* marker = (MovableFrame*) _wc->findFrame("Marker");
+        // Find the marker frame origin coordinate relative to the camera
+        Frame* cameraFrame = _wc->findFrame("CameraSim");
+
+        Q q(7, 0, -0.65, 0, 1.80, 0, 0.42, 0);
+        device->setQ(q, state);
+        counter = 0;
+        marker->moveTo(markerMotions[counter++ % markerMotions.size()], state);
+        target = getImagePoints(823.0, 0.5, marker, cameraFrame);
+        getRobWorkStudio()->setState(state);
 		log().info() << "Button 1\n";
 		// Toggle the timer on and off
 		if (!_timer->isActive())
@@ -172,56 +183,30 @@ void SamplePlugin::timer() {
 
     // Find the marker frame and cast it to a moveable frame
     MovableFrame* marker = (MovableFrame*) _wc->findFrame("Marker");
-
     // Find the marker frame origin coordinate relative to the camera
     Frame* cameraFrame = _wc->findFrame("CameraSim");
-
-    Transform3D<double> markerTransformRelativeToCam = cameraFrame->fTf(marker, state);
-    Vector3D<double> markerPosRelativeToCam = markerTransformRelativeToCam.P();
-    Vector2D<double> dUV;
-    Vector2D<double> uv;
-    visualservoing.robotCoordToImageCoord(markerPosRelativeToCam,0.5,823.0,&dUV, &uv);
-
-    /////////////////////////////////////////////////////////////////////
-    // Calculate inverse kinematics
-    /////////////////////////////////////////////////////////////////////
-    Jacobian jq = device->baseJframe(cameraFrame, state);
-    Jacobian sq(inverse(device->baseTframe(cameraFrame, state)).R());
-
+    image_stuff();
+    marker->moveTo(markerMotions[counter++ % markerMotions.size()], state);
+    auto uv = getImagePoints(823.0, 0.5, marker, cameraFrame);
+    std::cout << uv.size() << std::endl;
+    auto deviceJacobian = device->baseJframe(cameraFrame, state);
+    auto Sq = Jacobian(inverse(device->baseTframe(cameraFrame, state)).R());//    std::cout << jq << std::endl;
     //VisualServoing visualservoing;
-    Q dq = visualservoing.calculateDeltaQ(dUV, uv,0.5, 823.0,sq,jq);
-
+    Q dq = visualservoing.calculateDeltaQ(uv, target,0.5, 823.0,Sq,deviceJacobian);
     std::cout << "dq: " << dq << std::endl;
-
     Q qVector = device->getQ(state);
-
     std::cout << "Qvector before: " << qVector << std::endl;
-
-    qVector -= dq;
+    qVector += dq;
     std::cout << "Qvector after: " << qVector << std::endl;
-
     device->setQ(qVector, state);
     getRobWorkStudio()->setState(state);
 
+}
 
 
-    // Set the marker to a new position from the markermotion vector
-    //Transform3D<double> tmp = markerMotions[counter];
-    //std::cout << counter << std::endl;
-    //std::cout << markerMotions.size() << std::endl;
-    marker->setTransform(markerMotions[counter], state);
-
-    // Count the marker motion up with one
-    if(counter > (markerMotions.size() - 1))
-        counter = 0;
-    else
-        counter++;
-
-    // Update the state
-    getRobWorkStudio()->setState(state);
-
-
-	if (_framegrabber != NULL) {
+cv::Mat SamplePlugin::image_stuff()
+{
+    if (_framegrabber != NULL) {
 		// Get the image as a RW image
 		Frame* cameraFrame = _wc->findFrame("CameraSim");
 		_framegrabber->grab(cameraFrame, _state);
@@ -236,11 +221,11 @@ void SamplePlugin::timer() {
 
         Vision vision;
         LineFinding line_finder(imflip);
-        auto markers = line_finder.get_marker_points(&imflip);
+        /*auto markers = line_finder.get_marker_points(&imflip);
         for(uint8_t i = 0; i < markers.size(); i++)
         {
             cv::circle(imflip, markers[i],  5, Scalar( (i * 1000) % 256,i * 60,255 - i * 60),  CV_FILLED);
-        }
+        }*/
 
         //Mat trackedImg = vision.trackPicture(imflip);
         Mat trackedImg = imflip;
@@ -252,9 +237,11 @@ void SamplePlugin::timer() {
 		unsigned int maxW = 400;
 		unsigned int maxH = 800;
 		_label->setPixmap(p.scaled(maxW,maxH,Qt::KeepAspectRatio));
+        return imflip;
 	}
-}
+    return cv::Mat();
 
+}
 void SamplePlugin::stateChangedListener(const State& state) {
 	_state = state;
 }
@@ -302,5 +289,37 @@ std::vector<Transform3D<double> > SamplePlugin::readMotionFile(std::string fileN
 
     return markerMotions;
 }
+std::vector<double> SamplePlugin::getImagePoints(double f, double z, Frame *marker, Frame *camera )
+{
+    int trackingMethod = 1;
+    std::vector<double> points;
+    Transform3D<> markerToCam = inverse(marker->fTf(camera, state));
+    std::vector<Vector3D<> > imagePoints;
+    if (trackingMethod < 2) {
+        imagePoints.push_back(markerToCam * Vector3D<>(0,0,0));
+        if (trackingMethod == 1) {
+            imagePoints.push_back(markerToCam * Vector3D<>(0.1,0,0));
+            imagePoints.push_back(markerToCam * Vector3D<>(0,0.1,0));
+        }
+    } else {
+        imagePoints.push_back(markerToCam * Vector3D<>(0.12,0.12,0));
+        imagePoints.push_back(markerToCam * Vector3D<>(0.12,-0.12,0));
+        imagePoints.push_back(markerToCam * Vector3D<>(-0.12,0.12,0));
+    }
+
+    // std::cout << "xy:" << std::endl;
+    for (unsigned int i = 0; i < imagePoints.size(); i++) {
+        points.push_back(f * imagePoints[i][0] / z);
+        points.push_back(f * imagePoints[i][1] / z);
+        // std::cout << imagePoints[i][0] << ", " << imagePoints[i][1] << ", ";
+    }
+
+    // std::cout << std::endl;
+
+    // std::cout << points << std::endl;
+    return points;
+}
+
+
 
 Q_EXPORT_PLUGIN(SamplePlugin);
