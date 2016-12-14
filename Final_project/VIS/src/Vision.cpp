@@ -139,25 +139,11 @@ void Vision::applyHsvTrackbar(const cv::Mat &inImg)
 }
 */
 
-/*
-cv::Mat Vision::getVisionViewImage(cv::Mat inImg, std::vector<cv::Point2f> contourCenters)
-{
-    // Draw the red circles COG and the blue circle which is diagonal COG
-    //cv::Mat drawing = cv::Mat::zeros(inImg.size(), CV_8UC3);
-
-    for(int i = 0; i<contourCenters.size(); i++)
-    {
-        // Draw a circle with a random color
-        cv::circle(inImg, contourCenters[i], 10, cv::Scalar(50 + rand() % 150, 50 + rand() % 150, 50 + rand() % 150), -1);
-    }
-    //cv::circle(drawing, contourCenters[0], 10, cv::Scalar(255, 255, 255), -1);
-    //cv::circle(drawing, bluePoint, 10, cv::Scalar(255, 255, 255), -1);
-
-    return inImg;
-}*/
-
 std::vector<cv::Point2f> Vision::trackPicture(cv::Mat &inImg)
 {
+    std::vector<cv::Point2f> finalContoursCOG;
+    std::vector<cv::Point2f> blueContourCOG;
+
     // Apply HSV thresholds
     //cv::Mat blueHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(110, 60, 35), cv::Scalar(130, 200, 155));
     //cv::Mat redHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(0, 145, 110), cv::Scalar(50, 220, 215));
@@ -167,48 +153,81 @@ std::vector<cv::Point2f> Vision::trackPicture(cv::Mat &inImg)
     // Get the red and blue circles as contours
     std::vector<std::vector<cv::Point>> redContours = getContours(redHsvThreshImg, 0.75, 2000);
     std::vector<std::vector<cv::Point>> blueContours = getContours(blueHsvThreshImg, 0.75, 2000);
-    std::vector<cv::Point2f> contourCenters;
+
 
     if(redContours.size() > 0)
     {
-      // Calculate the center of gravity for the red contour and push it to contourCenters
-      contourCenters.push_back(getCOG(redContours[0]));
+      // Calculate the center of gravity for the red contour and push it to finalContourCOG
+      cv::Point2f redContourCOG = getCOG(redContours[0]);
+      finalContoursCOG.push_back(redContourCOG);
 
-      // Calculate the center of gravity for the blue contours and push them to contourCenters
+      // Calculate the center of gravity for the blue contours and push them to blueContourCenters
       for(unsigned int i = 0; i< blueContours.size(); i++)
       {
           cv::Point2f point = getCOG(blueContours[i]);
-          contourCenters.push_back(point);
+          blueContourCOG.push_back(point);
       }
 
-
-      cv::Point2f bluePoint = contourCenters[0];  // set initial to the red circles center
 
       // Find the blue circle diagonal to the red circle
-      for(unsigned int i = 1; i< contourCenters.size(); i++)
+      if(blueContourCOG.size() != 0)
       {
-          // If the distance between the red and blue COG is bigger than the last distance then save the new COG
-          if(cv::norm(contourCenters[0]-contourCenters[i]) > cv::norm(contourCenters[0]-bluePoint))
-              bluePoint = contourCenters[i];
+          cv::Point2f bluePoint = redContourCOG;  // set initial to the red circles center
+          auto blue_pt_itt = blueContourCOG.begin();
+
+          for(auto itt = blueContourCOG.begin(); itt != blueContourCOG.end(); ++itt)
+          {
+              // If the distance between the red and blue COG is bigger than the last distance then save the new COG
+              if(cv::norm(redContourCOG-*itt) > cv::norm(redContourCOG-bluePoint))
+              {
+                  bluePoint = *itt;
+                  blue_pt_itt = itt;
+              }
+          }
+          blueContourCOG.erase(blue_pt_itt);
+
+          finalContoursCOG.push_back(bluePoint);    // Push the blue diagonal circle to final contour cogs
       }
 
 
-      std::vector<cv::Point2f> finalContoursCenters;
-      finalContoursCenters.push_back(contourCenters[0]);
-      finalContoursCenters.push_back(bluePoint);
+      // Find the two other blue circles in the same order every time and push to finalContourCOG
+      if(blueContourCOG.size() == 2)
+        sort_points(finalContoursCOG, blueContourCOG, finalContoursCOG);
 
 
       // Draw COG in the original image
-      for(int i = 0; i<finalContoursCenters.size(); i++)
+      for(unsigned int i = 0; i<finalContoursCOG.size(); i++)
       {
           // Draw a circle with a random color
-          cv::circle(inImg, finalContoursCenters[i], 10, cv::Scalar(50 + rand() % 150, 50 + rand() % 150, 50 + rand() % 150), -1);
+          cv::circle(inImg, finalContoursCOG[i], 10, cv::Scalar(50 + rand() % 150, 50 + rand() % 150, 50 + rand() % 150), -1);
       }
 
-      return finalContoursCenters;
+      return finalContoursCOG;
 
 
     }
 
     return  std::vector<cv::Point2f>();
+}
+
+
+void Vision::sort_points(std::vector<cv::Point2f> knownCOGS, std::vector<cv::Point2f> unknownCOGS, std::vector<cv::Point2f> &finalCOGS)
+{
+    cv::Point2f direction = get_direction_vector(knownCOGS[0], knownCOGS[1], false);
+
+    cv::Point2f perp_direction(-direction.y, direction.x);
+    cv::Point2f perp_point = knownCOGS[0] + perp_direction * 50;
+    //line(img, center1, perp_point, Scalar(255,0,255), 5);
+
+    if(get_distance(unknownCOGS[0], perp_point) >
+       get_distance(unknownCOGS[0], knownCOGS[0]))
+    {
+       finalCOGS.push_back(unknownCOGS[0]);
+       finalCOGS.push_back(unknownCOGS[1]);
+    }
+    else
+    {
+        finalCOGS.push_back(unknownCOGS[1]);
+        finalCOGS.push_back(unknownCOGS[0]);
+    }
 }

@@ -6,6 +6,7 @@
 #include <vector>
 #include <cmath>
 #include <string>
+#include "helper_funcs.hpp"
 
 
 class Vision
@@ -32,6 +33,7 @@ private:
     cv::Point2f getCOG(std::vector<cv::Point> contour);
     //static void on_trackbar( int, void* );
     //void applyHsvTrackbar(const cv::Mat &inImg);
+    void sort_points(std::vector<cv::Point2f> knownCOGS, std::vector<cv::Point2f> unknownCOGS, std::vector<cv::Point2f> &finalCOGS);
 public:
     Vision();
     std::vector<cv::Point2f> trackPicture(cv::Mat &inImg);
