@@ -1,5 +1,5 @@
 #include "SamplePlugin.hpp"
-
+#include "LineFinding.hpp"
 
 
 #include <QPushButton>
@@ -144,7 +144,7 @@ void SamplePlugin::btnPressed() {
     std::vector<Transform3D<float> > test = readMotionFile("/home/student/Dropbox/RobTek/Cand_1_semester/Robotics/Mandatory/ROVI/Final_project/ROB/RoViPlugin/motions/MarkerMotionSlow.txt");
     */
 
-    markerMotions = readMotionFile("/home/student/Dropbox/RobTek/Cand_1_semester/Robotics/Mandatory/ROVI/Final_project/ROB/RoViPlugin/motions/MarkerMotionSlow.txt");
+    markerMotions = readMotionFile("/home/student/Downloads/SamplePluginPA10/motions/MarkerMotionSlow.txt");
 
 
 	QObject *obj = sender();
@@ -152,7 +152,7 @@ void SamplePlugin::btnPressed() {
 		log().info() << "Button 0\n";
 		// Set a new texture (one pixel = 1 mm)
 		Image::Ptr image;
-        image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/markers/Marker1.ppm");
+        image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/markers/Marker2b.ppm");
         _textureRender->setImage(*image);
 		image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/backgrounds/color1.ppm");
 		_bgRender->setImage(*image);
@@ -161,7 +161,7 @@ void SamplePlugin::btnPressed() {
 		log().info() << "Button 1\n";
 		// Toggle the timer on and off
 		if (!_timer->isActive())
-            _timer->start(100); // run 10 Hz
+            _timer->start(1000); // run 10 Hz
 		else
 			_timer->stop();
 	} else if(obj==_spinBox){
@@ -183,6 +183,8 @@ void SamplePlugin::timer() {
 
     // Set the marker to a new position from the markermotion vector
     //Transform3D<double> tmp = markerMotions[counter];
+    //std::cout << counter << std::endl;
+    //std::cout << markerMotions.size() << std::endl;
     marker->setTransform(markerMotions[counter], state);
 
     // Count the marker motion up with one
@@ -209,8 +211,15 @@ void SamplePlugin::timer() {
         //cv::imwrite("/home/student/Desktop/test.png", imflip);
 
         Vision vision;
+        LineFinding line_finder(imflip);
+        auto markers = line_finder.get_marker_points(&imflip);
+        for(uint8_t i = 0; i < markers.size(); i++)
+        {
+            cv::circle(imflip, markers[i],  5, Scalar( (i * 1000) % 256,i * 60,255 - i * 60),  CV_FILLED);
+        }
 
-        Mat trackedImg = vision.trackPicture(imflip);
+        //Mat trackedImg = vision.trackPicture(imflip);
+        Mat trackedImg = imflip;
         //Mat trackedImg = trackPicture(imflip);
 
 		// Show in QLabel

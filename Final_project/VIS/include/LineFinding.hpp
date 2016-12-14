@@ -16,7 +16,7 @@ class LineFinding
         static cv::Mat performCanny(cv::Mat in_image, int threshold, float ratio = 3, bool convert = true, bool blur = true, int blur_image = 7);
         static cv::Mat applyHsvThreshold(const cv::Mat &inImg, const cv::Scalar minThresh, const cv::Scalar maxThresh);
         void detect_areas();
-        std::vector<cv::Point2f> get_marker_points();
+        std::vector<cv::Point2f> get_marker_points(cv::Mat *img = nullptr);
         cv::Mat find_largest_square();
         void create_edges();
         void combine_double_lines(std::vector<cv::Vec4i> &lines);
@@ -38,4 +38,6 @@ class LineFinding
         cv::Mat big_white_areas;
         cv::Mat detected_edges;
         std::vector<cv::Point> bigest_square_contour;
+        cv::Mat largest_square;
+        cv::Mat canny_countour;
 };
