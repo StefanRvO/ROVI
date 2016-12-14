@@ -21,6 +21,9 @@
 #include <string>
 #include <fstream>
 
+#include "Vision.hpp"
+#include "Visualservoing.hpp"
+
 
 using namespace rw::common;
 using namespace rw::graphics;
@@ -69,6 +72,7 @@ private:
     State state;
     std::vector<Transform3D<double> > markerMotions;
     unsigned int counter = 0;
+    VisualServoing visualservoing;
 
 
 };

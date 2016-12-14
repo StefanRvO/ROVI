@@ -6,9 +6,11 @@ VisualServoing::VisualServoing()
 
 }
 
-rw::math::Jacobian VisualServoing::calculateImageJacobian(const int u, const int v, const int f, const int z)
+rw::math::Jacobian VisualServoing::calculateImageJacobian(Vector2D<double> uv, const double f, const double z)
 {
     rw::math::Jacobian imageJacobian(2,6);
+    double u = uv[0];
+    double v = uv[1];
 
     imageJacobian(0,0) = -f/z;
     imageJacobian(0,1) = 0;
@@ -26,11 +28,52 @@ rw::math::Jacobian VisualServoing::calculateImageJacobian(const int u, const int
     return imageJacobian;
 }
 
-void VisualServoing::calculateDeltaQ(const int u, const int v, const int z, const int f, rw::math::Jacobian Sq, rw::math::Jacobian Jq)
+Q VisualServoing::calculateDeltaQ(Vector2D<double> uv, const double z, const double f, rw::math::Jacobian Sq, rw::math::Jacobian Jq)
 {
-    rw::math::Jacobian imageJacobian = calculateImageJacobian(u, v, f, z);
+    // Calculate du and dv
+    Vector2D<double>dUV(0,0);
+    if(first_run)
+    {
+        first_run = false;
+    }
+    else
+    {
+        dUV = uv - lastUV;
+    }
 
-    rw::math::Jacobian zImage = imageJacobian * Sq * Jq;
+    lastUV = uv;
+    std::cout << "duv: " << dUV << std::endl;
+
+
+    Jacobian duvJacobian(dUV.e());
+
+    // Calculate image jacobian
+    Jacobian imageJacobian = calculateImageJacobian(uv, f, z);
+
+    // Calculate Zimage
+    Jacobian zImage = imageJacobian * Sq * Jq;
+
+
+    auto zImageT = zImage.e().transpose();
+
+    auto tmp = (zImage.e() * zImageT).inverse();
+
+
+    auto y = (tmp * duvJacobian.e());
+
+    rw::math::Jacobian dq(zImageT * y);
+
+    Q dq_q(dq.e());
+
+    //std::cout << dq_q << std::endl;
+
+    return dq_q;
+
+    //auto tmp1 = tmp * dUV.e();
+   // rw::math::LinearAlgebra::EigenMatrix<double> test = (zImage * zImage.e().transpose()).e().inverse();
+   // LinearAlgebra::EigenMatrix<double> test = (zImage * .e().inverse();
+    //auto test1 = test *dUV;
+    
 }
 
 
@@ -48,3 +91,4 @@ Vector2D<double> VisualServoing::robotCoordToImageCoord(Vector3D<double> robotCo
 
     return Vector2D<double>(u,v);
 }
+

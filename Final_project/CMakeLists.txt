@@ -11,5 +11,5 @@ SET(ROOT ${CMAKE_CURRENT_SOURCE_DIR})
 SET( CMAKE_CXX_FLAGS  "	${CMAKE_CXX_FLAGS} -Wno-cast-qual -std=c++11 -Ofast -Wall -Wextra -Wpointer-arith -ffunction-sections -fdata-sections  -g -Wno-unused-local-typedefs -Wno-unused-parameter -fPIC" )
 
 add_subdirectory("VIS")
-#add_subdirectory("ROB")
+add_subdirectory("ROB")
 

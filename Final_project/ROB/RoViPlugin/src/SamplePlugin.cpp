@@ -4,8 +4,6 @@
 
 #include <QPushButton>
 
-#include "Vision.hpp"
-
 
 cv::Mat globalImg;
 
@@ -144,6 +142,9 @@ void SamplePlugin::btnPressed() {
     std::vector<Transform3D<float> > test = readMotionFile("/home/student/Dropbox/RobTek/Cand_1_semester/Robotics/Mandatory/ROVI/Final_project/ROB/RoViPlugin/motions/MarkerMotionSlow.txt");
     */
 
+
+
+
     markerMotions = readMotionFile("/home/student/Dropbox/RobTek/Cand_1_semester/Robotics/Mandatory/ROVI/Final_project/ROB/RoViPlugin/motions/MarkerMotionSlow.txt");
 
 
@@ -178,8 +179,35 @@ void SamplePlugin::timer() {
 
     // Find the marker frame origin coordinate relative to the camera
     Frame* cameraFrame = _wc->findFrame("CameraSim");
+
     Transform3D<double> markerTransformRelativeToCam = cameraFrame->fTf(marker, state);
     Vector3D<double> markerPosRelativeToCam = markerTransformRelativeToCam.P();
+    Vector2D<double> test(markerPosRelativeToCam[0],markerPosRelativeToCam[1]);
+    //std::cout << markerPosRelativeToCam << std::endl;
+
+
+    /////////////////////////////////////////////////////////////////////
+    // Calculate inverse kinematics
+    /////////////////////////////////////////////////////////////////////
+    Jacobian jq = device->baseJframe(cameraFrame, state);
+    Jacobian sq(inverse(device->baseTframe(cameraFrame, state)).R());
+
+    //VisualServoing visualservoing;
+    Q dq = visualservoing.calculateDeltaQ(test,0.5, 823.0,sq,jq);
+
+    std::cout << "dq: " << dq << std::endl;
+
+    Q qVector = device->getQ(state);
+
+    std::cout << "Qvector before: " << qVector << std::endl;
+
+    qVector -= dq;
+    std::cout << "Qvector after: " << qVector << std::endl;
+
+    device->setQ(qVector, state);
+    getRobWorkStudio()->setState(state);
+
+
 
     // Set the marker to a new position from the markermotion vector
     //Transform3D<double> tmp = markerMotions[counter];
