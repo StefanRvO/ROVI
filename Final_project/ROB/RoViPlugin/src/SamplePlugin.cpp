@@ -158,7 +158,7 @@ void SamplePlugin::btnPressed() {
 		log().info() << "Button 1\n";
 		// Toggle the timer on and off
 		if (!_timer->isActive())
-            _timer->start(1000); // run 10 Hz
+            _timer->start(100); // run 10 Hz
 		else
 			_timer->stop();
 	} else if(obj==_spinBox){
@@ -178,9 +178,9 @@ void SamplePlugin::timer() {
 
     Transform3D<double> markerTransformRelativeToCam = cameraFrame->fTf(marker, state);
     Vector3D<double> markerPosRelativeToCam = markerTransformRelativeToCam.P();
-    Vector2D<double> test(markerPosRelativeToCam[0],markerPosRelativeToCam[1]);
-    //std::cout << markerPosRelativeToCam << std::endl;
-
+    Vector2D<double> dUV;
+    Vector2D<double> uv;
+    visualservoing.robotCoordToImageCoord(markerPosRelativeToCam,0.5,823.0,&dUV, &uv);
 
     /////////////////////////////////////////////////////////////////////
     // Calculate inverse kinematics
@@ -189,7 +189,7 @@ void SamplePlugin::timer() {
     Jacobian sq(inverse(device->baseTframe(cameraFrame, state)).R());
 
     //VisualServoing visualservoing;
-    Q dq = visualservoing.calculateDeltaQ(test,0.5, 823.0,sq,jq);
+    Q dq = visualservoing.calculateDeltaQ(dUV, uv,0.5, 823.0,sq,jq);
 
     std::cout << "dq: " << dq << std::endl;
 

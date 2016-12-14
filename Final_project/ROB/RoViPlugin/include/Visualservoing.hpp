@@ -12,14 +12,14 @@ using namespace rw::math;
 class VisualServoing
 {
 private:
-    Vector2D<double> lastUV;
+    Vector3D<double> last_point;
     bool first_run = true;
 
 public:
     VisualServoing();
-    rw::math::Jacobian calculateImageJacobian(Vector2D<double> uv, const double f, const double z);
-    Q calculateDeltaQ(Vector2D<double> uv, const double z, const double f, rw::math::Jacobian Sq, rw::math::Jacobian Jq);
-    Vector2D<double> robotCoordToImageCoord(Vector3D<double> robotCoord, double z, double f);
+    rw::math::Jacobian calculateImageJacobian(Vector2D<double> dUV, const double f, const double z);
+    Q calculateDeltaQ(Vector2D<double> dUV,Vector2D<double> uv , const double z, const double f, rw::math::Jacobian Sq, rw::math::Jacobian Jq);
+    void robotCoordToImageCoord(Vector3D<double> robotCoord, double z, double f, Vector2D<double> *dUV, Vector2D<double> *uv);
 };
 
 #endif // VISUALSERVOING_H

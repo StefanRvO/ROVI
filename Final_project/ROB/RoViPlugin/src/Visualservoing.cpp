@@ -28,20 +28,8 @@ rw::math::Jacobian VisualServoing::calculateImageJacobian(Vector2D<double> uv, c
     return imageJacobian;
 }
 
-Q VisualServoing::calculateDeltaQ(Vector2D<double> uv, const double z, const double f, rw::math::Jacobian Sq, rw::math::Jacobian Jq)
+Q VisualServoing::calculateDeltaQ(Vector2D<double> dUV, Vector2D<double> uv, const double z, const double f, rw::math::Jacobian Sq, rw::math::Jacobian Jq)
 {
-    // Calculate du and dv
-    Vector2D<double>dUV(0,0);
-    if(first_run)
-    {
-        first_run = false;
-    }
-    else
-    {
-        dUV = uv - lastUV;
-    }
-
-    lastUV = uv;
     std::cout << "duv: " << dUV << std::endl;
 
 
@@ -80,15 +68,29 @@ Q VisualServoing::calculateDeltaQ(Vector2D<double> uv, const double z, const dou
 /*
 *   Converts a coordinate seen in from the robot camera 3D to a image coordinate in 2D
 */
-Vector2D<double> VisualServoing::robotCoordToImageCoord(Vector3D<double> robotCoord, double z, double f)
+void VisualServoing::robotCoordToImageCoord(Vector3D<double> robotCoord, double z, double f, Vector2D<double> *dUV, Vector2D<double> *uv)
 {
-    double x = robotCoord[1];
-    double y = robotCoord[2];
-    //double z = robotCoord[3];
+    double x = robotCoord[0];
+    double y = robotCoord[1];
+    Vector3D<double> cur_point(x,y,z);
+    //std::cout << "cur\t" << cur_point << std::endl;
+    auto delta_xyz = last_point - cur_point;
+    last_point = cur_point;
+    //std::cout << "delta\t" << delta_xyz << std::endl;
 
-    double u = (f*x) / z;
-    double v = (f*y) / z;
 
-    return Vector2D<double>(u,v);
+    double u = (f * x)/z;
+    double v = (f * y)/z;
+    *uv = Vector2D<double>(u,v);
+    double du = (f/z) * delta_xyz[0] - ((f * x)/(z * z)) * delta_xyz[2];
+    double dv = (f/z) * delta_xyz[1] - ((f * y)/(z * z)) * delta_xyz[2];
+    *dUV = Vector2D<double>(du,dv);
+
+    if(first_run)
+    {
+        first_run = false;
+        *dUV = Vector2D<double>(0,0);
+    }
+    return;
 }
 
