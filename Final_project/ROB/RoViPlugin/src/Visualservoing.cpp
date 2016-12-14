@@ -52,13 +52,24 @@ Jacobian VisualServoing::calculateImageJacobian(std::vector<double> uv, float f,
     return mergeJacobians(jacobians);
 }
 
-Q VisualServoing::calculateDeltaQ(std::vector<double> uv, std::vector<double> target, const double z, const double f, rw::math::Jacobian Sq, rw::math::Jacobian Jq)
+Q VisualServoing::calculateDeltaQ(std::vector<Vector2D<double> > uv_, std::vector<Vector2D<double> > target_, const double z, const double f, rw::math::Jacobian Sq, rw::math::Jacobian Jq)
 {
+    std::vector<double> uv;
+    for(auto point : uv_)
+    {
+        uv.push_back(point[0]);
+        uv.push_back(point[1]);
+    }
+    std::vector<double> target;
+    for(auto point : target_)
+    {
+        target.push_back(point[0]);
+        target.push_back(point[1]);
+    }
     last_uv.resize(uv.size());
     std::vector<double> duv;
     duv.resize(uv.size());
     for(size_t i = 0; i < uv.size(); i++) duv[i] = target[i] - uv[i];
-    std::cout << duv.size() << std::endl;
 
     // Calculate image jacobian
     Jacobian imageJacobian = calculateImageJacobian(uv, f, z);

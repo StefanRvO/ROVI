@@ -73,9 +73,9 @@ private:
     std::vector<Transform3D<double> > markerMotions;
     unsigned int counter = 0;
     VisualServoing visualservoing;
-    std::vector<double> getImagePoints(double f, double z, Frame *marker, Frame *camera);
+    std::vector<Vector2D<double> > get_tracker_points(double z, double f, Frame *marker, Frame *camera, int cnt);
     cv::Mat image_stuff();
-    std::vector<double> target;
+    std::vector<Vector2D<double> > target;
 
 
 };

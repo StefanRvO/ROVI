@@ -21,7 +21,7 @@ private:
 public:
     VisualServoing();
     rw::math::Jacobian calculateImageJacobian(Vector2D<double> dUV, const double f, const double z);
-    Q calculateDeltaQ(std::vector<double> uv, std::vector<double> target, const double z, const double f, rw::math::Jacobian Sq, rw::math::Jacobian Jq);
+    Q calculateDeltaQ(std::vector<Vector2D<double> > uv, std::vector<Vector2D<double> > target, const double z, const double f, rw::math::Jacobian Sq, rw::math::Jacobian Jq);
     void robotCoordToImageCoord(Vector3D<double> robotCoord, double z, double f, Vector2D<double> *dUV, Vector2D<double> *uv);
     rw::math::Jacobian vectorToJacobian(std::vector<double> vector);
     Jacobian calculateImageJacobian(std::vector<double> uv, float f,  float z);

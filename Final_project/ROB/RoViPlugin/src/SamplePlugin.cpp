@@ -128,21 +128,7 @@ Mat SamplePlugin::toOpenCVImage(const Image& img) {
 }
 
 void SamplePlugin::btnPressed() {
-    /*
-    state= getRobWorkStudio()->getState();
-    Q qVector = device->getQ(state);
-    std::cout << qVector << std::endl;
-    Q dq(7,1);
-    qVector += dq;
-    device->setQ(qVector, state);
-    getRobWorkStudio()->setState(state);
-    std::cout << qVector << std::endl;
-
-    auto marker = _wc->findFrame("Marker");
-    std::vector<Transform3D<float> > test = readMotionFile("/home/student/Dropbox/RobTek/Cand_1_semester/Robotics/Mandatory/ROVI/Final_project/ROB/RoViPlugin/motions/MarkerMotionSlow.txt");
-    */
-
-    	markerMotions = readMotionFile("/home/student/Downloads/SamplePluginPA10/motions/MarkerMotionSlow.txt");
+    markerMotions = readMotionFile("/home/student/Downloads/SamplePluginPA10/motions/MarkerMotionSlow.txt");
 
 	QObject *obj = sender();
 	if(obj==_btn0){
@@ -164,12 +150,13 @@ void SamplePlugin::btnPressed() {
         device->setQ(q, state);
         counter = 0;
         marker->moveTo(markerMotions[counter++ % markerMotions.size()], state);
-        target = getImagePoints(823.0, 0.5, marker, cameraFrame);
+        getRobWorkStudio()->setState(state);
+        target = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
         getRobWorkStudio()->setState(state);
 		log().info() << "Button 1\n";
 		// Toggle the timer on and off
 		if (!_timer->isActive())
-            _timer->start(100); // run 10 Hz
+            _timer->start(10); // run 10 Hz
 		else
 			_timer->stop();
 	} else if(obj==_spinBox){
@@ -186,18 +173,24 @@ void SamplePlugin::timer() {
     // Find the marker frame origin coordinate relative to the camera
     Frame* cameraFrame = _wc->findFrame("CameraSim");
     image_stuff();
-    marker->moveTo(markerMotions[counter++ % markerMotions.size()], state);
-    auto uv = getImagePoints(823.0, 0.5, marker, cameraFrame);
-    std::cout << uv.size() << std::endl;
-    auto deviceJacobian = device->baseJframe(cameraFrame, state);
-    auto Sq = Jacobian(inverse(device->baseTframe(cameraFrame, state)).R());//    std::cout << jq << std::endl;
-    //VisualServoing visualservoing;
-    Q dq = visualservoing.calculateDeltaQ(uv, target,0.5, 823.0,Sq,deviceJacobian);
-    std::cout << "dq: " << dq << std::endl;
+    marker->moveTo(markerMotions[counter++], state);
+
+    auto uv = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
+
+    auto d_j = device->baseJframe(cameraFrame, state);
+    auto sj = Jacobian(inverse(device->baseTframe(cameraFrame, state)).R());
+
+    Q dq = visualservoing.calculateDeltaQ(uv, target,0.5, 823.0,sj,d_j);
+
     Q qVector = device->getQ(state);
-    std::cout << "Qvector before: " << qVector << std::endl;
     qVector += dq;
-    std::cout << "Qvector after: " << qVector << std::endl;
+
+    if(counter == markerMotions.size())
+    {
+        qVector =  Q(7, 0, -0.65, 0, 1.80, 0, 0.42, 0);
+        counter = 0;
+    }
+    //std::cout << "Qvector after: " << qVector << std::endl;
     device->setQ(qVector, state);
     getRobWorkStudio()->setState(state);
 
@@ -289,34 +282,24 @@ std::vector<Transform3D<double> > SamplePlugin::readMotionFile(std::string fileN
 
     return markerMotions;
 }
-std::vector<double> SamplePlugin::getImagePoints(double f, double z, Frame *marker, Frame *camera )
+std::vector<Vector2D<double> > SamplePlugin::get_tracker_points(double z, double f, Frame *marker, Frame *camera, int cnt)
 {
-    int trackingMethod = 1;
-    std::vector<double> points;
-    Transform3D<> markerToCam = inverse(marker->fTf(camera, state));
-    std::vector<Vector3D<> > imagePoints;
-    if (trackingMethod < 2) {
-        imagePoints.push_back(markerToCam * Vector3D<>(0,0,0));
-        if (trackingMethod == 1) {
-            imagePoints.push_back(markerToCam * Vector3D<>(0.1,0,0));
-            imagePoints.push_back(markerToCam * Vector3D<>(0,0.1,0));
-        }
-    } else {
-        imagePoints.push_back(markerToCam * Vector3D<>(0.12,0.12,0));
-        imagePoints.push_back(markerToCam * Vector3D<>(0.12,-0.12,0));
-        imagePoints.push_back(markerToCam * Vector3D<>(-0.12,0.12,0));
+    std::vector<Vector2D<double>> points;
+    Transform3D<> marker_coords = inverse(marker->fTf(camera, state));
+    std::vector<Vector3D<> > marker_points;
+    //Create
+    marker_points.push_back(marker_coords * Vector3D<>(0.1,0.1,0));
+    if(cnt >= 2)
+        marker_points.push_back(marker_coords * Vector3D<>(0.1,-0.1,0));
+    if(cnt >= 3)
+        marker_points.push_back(marker_coords * Vector3D<>(-0.1,0.1,0));
+    for(auto marker_point : marker_points)
+    {
+        Vector2D<double> point;
+        point[0] = f * marker_point[0] / z;
+        point[1] = f * marker_point[1] / z;
+        points.push_back(point);
     }
-
-    // std::cout << "xy:" << std::endl;
-    for (unsigned int i = 0; i < imagePoints.size(); i++) {
-        points.push_back(f * imagePoints[i][0] / z);
-        points.push_back(f * imagePoints[i][1] / z);
-        // std::cout << imagePoints[i][0] << ", " << imagePoints[i][1] << ", ";
-    }
-
-    // std::cout << std::endl;
-
-    // std::cout << points << std::endl;
     return points;
 }
 
