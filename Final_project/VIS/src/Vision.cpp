@@ -139,7 +139,23 @@ void Vision::applyHsvTrackbar(const cv::Mat &inImg)
 }
 */
 
-cv::Mat Vision::trackPicture(cv::Mat inImg)
+cv::Mat Vision::getVisionViewImage(cv::Mat inImg, std::vector<cv::Point2f> contourCenters)
+{
+    // Draw the red circles COG and the blue circle which is diagonal COG
+    cv::Mat drawing = cv::Mat::zeros(inImg.size(), CV_8UC3);
+
+    for(int i = 0; i<contourCenters.size(); i++)
+    {
+        // Draw a circle with a random color
+        cv::circle(drawing, contourCenters[i], 10, cv::Scalar(50 + rand() % 150, 50 + rand() % 150, 50 + rand() % 150), -1);
+    }
+    //cv::circle(drawing, contourCenters[0], 10, cv::Scalar(255, 255, 255), -1);
+    //cv::circle(drawing, bluePoint, 10, cv::Scalar(255, 255, 255), -1);
+
+    return drawing;
+}
+
+std::vector<cv::Point2f> Vision::trackPicture(cv::Mat inImg)
 {
     // Apply HSV thresholds
     //cv::Mat blueHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(110, 60, 35), cv::Scalar(130, 200, 155));
@@ -175,14 +191,21 @@ cv::Mat Vision::trackPicture(cv::Mat inImg)
               bluePoint = contourCenters[i];
       }
 
+
+      std::vector<cv::Point2f> finalContoursCenters;
+      finalContoursCenters.push_back(contourCenters[0]);
+      finalContoursCenters.push_back(bluePoint);
+      return finalContoursCenters;
+
+      /*
       // Draw the red circles COG and the blue circle which is diagonal COG
       cv::Mat drawing = cv::Mat::zeros(redHsvThreshImg.size(), CV_8UC3);
       cv::circle(drawing, contourCenters[0], 10, cv::Scalar(255, 255, 255), -1);
       cv::circle(drawing, bluePoint, 10, cv::Scalar(255, 255, 255), -1);
 
-      return drawing;
+      return drawing;*/
     }
     //std::cout << "TJO: Error could not find any red circles in the image!" << std::endl;
 
-    return inImg;
+    return  std::vector<cv::Point2f>();
 }
