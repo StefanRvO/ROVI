@@ -2,7 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
-
+#include "helper_funcs.hpp"
 using namespace std;
 
 // Global variables
@@ -19,14 +19,6 @@ int sSliderMax = 255;
 const int vSlider = 255;
 int vSliderMin = 0;
 int vSliderMax = 255;
-
-
-void displayImage(string name, cv::Mat &image)
-{
-  cv::namedWindow(name, cv::WINDOW_NORMAL);
-  cv::imshow(name, image);
-  cv::resizeWindow(name, 600,600);
-}
 
 cv::Mat getThresholdImage(const cv::Mat &inImg)
 {
@@ -179,14 +171,6 @@ std::vector<std::vector<cv::Point>> getContours(cv::Mat inImg, float compactThre
 /*
 * Calculates and returns the center of gravity of a contour
 */
-cv::Point2f getCOG(std::vector<cv::Point> contour)
-{
-    /// Get the moment of the contour
-    cv::Moments mu = moments( contour, false );
-
-    // Calculate and return the center of gravity
-    return cv::Point2f( mu.m10/mu.m00 , mu.m01/mu.m00);
-}
 
 int main(int argc, char** argv)
 {

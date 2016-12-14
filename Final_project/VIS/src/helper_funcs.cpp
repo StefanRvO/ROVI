@@ -122,6 +122,14 @@ void displayImage(const Mat &image, string name)
   cv::resizeWindow(name, 1000,1000);
 }
 
+void displayImage(string name, const Mat &image)
+{
+  namedWindow(name, WINDOW_NORMAL);
+  cv::imshow(name, image);
+  cv::resizeWindow(name, 1000,1000);
+}
+
+
 
 //Shamelessly stolen from stackoverflow
 //http://stackoverflow.com/questions/25197805/how-to-delete-repeating-coordinates-of-vectorpoint2f
@@ -129,7 +137,8 @@ void remove_duplicates(std::vector<Point2f>& vec)
 {
     for(auto &point : vec)
     {
-        point = (cv::Point)point;
+        point.x = (int)point.x;
+        point.y = (int)point.y;
     }
     std::unordered_set<Point2f> pointset;  // unordered_set is a hash table implementation
 
@@ -152,7 +161,8 @@ void remove_duplicates(std::vector<Marker_candidate>& vec)
 {
     for(auto &point : vec)
     {
-        point.center = (cv::Point)point.center;
+        point.center.x = (int)point.center.x;
+        point.center.y = (int)point.center.y;
     }
     std::unordered_set<Marker_candidate> pointset;  // unordered_set is a hash table implementation
 

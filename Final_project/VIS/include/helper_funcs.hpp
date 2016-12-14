@@ -18,6 +18,8 @@ cv::Point2f find_intersection(cv::Point2f line1_a, cv::Point2f line1_b, cv::Poin
 bool does_intersect(cv::Point2f line1_a, cv::Point2f line1_b, cv::Point2f line2_a, cv::Point2f line2_b);
 void concat_lines(cv::Point2f line1_a, cv::Point2f line1_b, cv::Point2f line2_a, cv::Point2f line2_b, cv::Point2f *new_line_a, cv::Point2f *new_line_b);
 void displayImage(const cv::Mat &image, std::string name);
+void displayImage(std::string name, const cv::Mat &image);
+
 cv::Point2f getCOG(std::vector<cv::Point> contour);
 void remove_duplicates(std::vector<cv::Point2f>& vec);
 void remove_duplicates(std::vector<Marker_candidate>& vec);
