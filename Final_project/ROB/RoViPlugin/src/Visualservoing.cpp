@@ -35,7 +35,7 @@ rw::math::Jacobian VisualServoing::calc_img_jacb(std::vector<Vector2D<double> > 
 
 Q VisualServoing::calculateDeltaQ(std::vector<Vector2D<double> > uv, std::vector<Vector2D<double> > target, const double z, const double f, rw::math::Jacobian Sq, rw::math::Jacobian Jq)
 {
-    if(uv.size() == 0) return Q(0,0,0,0,0,0,0);
+    if(uv.size() == 0) return Q(6,0,0,0,0,0,0);
     std::vector<Vector2D<double> > duv_s;
     duv_s.resize(uv.size());
     for(size_t i = 0; i < uv.size(); i++) duv_s[i] = target[i] - uv[i];

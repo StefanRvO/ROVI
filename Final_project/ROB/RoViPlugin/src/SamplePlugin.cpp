@@ -151,7 +151,9 @@ void SamplePlugin::btnPressed() {
         counter = 0;
         marker->moveTo(markerMotions[counter++ % markerMotions.size()], state);
         getRobWorkStudio()->setState(state);
-        target = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
+        //target = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
+        cv::Mat image = getCameraImage();
+        target = getVisionPoints(image);
         getRobWorkStudio()->setState(state);
 		log().info() << "Button 1\n";
 		// Toggle the timer on and off
@@ -240,12 +242,8 @@ cv::Mat SamplePlugin::getCameraImage()
 
 		// Convert to OpenCV image
         Mat im = toOpenCVImage(image);
-		Mat imflip;
-		cv::flip(im, imflip, 0);
 
-        //setCameraViewImage(imflip);
-
-        return imflip;
+        return im;
 	}
     return cv::Mat();
 
@@ -257,7 +255,10 @@ cv::Mat SamplePlugin::getCameraImage()
 void SamplePlugin::setCameraViewImage(cv::Mat image)
 {
     // Show in QLabel
-    QImage img(image.data, image.cols, image.rows, image.step, QImage::Format_RGB888);
+    Mat imflip;
+    cv::flip(image, imflip, 0);
+
+    QImage img(imflip.data, imflip.cols, imflip.rows, imflip.step, QImage::Format_RGB888);
     QPixmap p = QPixmap::fromImage(img);
     unsigned int maxW = 400;
     unsigned int maxH = 800;
