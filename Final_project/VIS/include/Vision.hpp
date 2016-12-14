@@ -34,7 +34,8 @@ private:
     //void applyHsvTrackbar(const cv::Mat &inImg);
 public:
     Vision();
-    cv::Mat trackPicture(cv::Mat inImg);
+    std::vector<cv::Point2f> trackPicture(cv::Mat inImg);
+    cv::Mat getVisionViewImage(cv::Mat inImg, std::vector<cv::Point2f> contourCenters);
 };
 
 #endif // VISION_H

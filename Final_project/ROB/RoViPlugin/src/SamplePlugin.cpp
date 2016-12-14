@@ -128,14 +128,14 @@ Mat SamplePlugin::toOpenCVImage(const Image& img) {
 }
 
 void SamplePlugin::btnPressed() {
-    markerMotions = readMotionFile("/home/student/Downloads/SamplePluginPA10/motions/MarkerMotionSlow.txt");
+    markerMotions = readMotionFile("/home/student/Downloads/SamplePluginPA10/motions/MarkerMotionMedium.txt");
 
 	QObject *obj = sender();
 	if(obj==_btn0){
 		log().info() << "Button 0\n";
 		// Set a new texture (one pixel = 1 mm)
 		Image::Ptr image;
-        image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/markers/Marker2b.ppm");
+        image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/markers/Marker1.ppm");
         _textureRender->setImage(*image);
 		image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/backgrounds/color1.ppm");
 		_bgRender->setImage(*image);
@@ -172,10 +172,14 @@ void SamplePlugin::timer() {
     MovableFrame* marker = (MovableFrame*) _wc->findFrame("Marker");
     // Find the marker frame origin coordinate relative to the camera
     Frame* cameraFrame = _wc->findFrame("CameraSim");
-    image_stuff();
+
+
     marker->moveTo(markerMotions[counter++], state);
 
-    auto uv = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
+    // Use vision to get marker points
+    cv::Mat image = getCameraImage();
+    std::vector<Vector2D<double> > uv = getVisionPoints(image);
+   // auto uv = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
 
     auto d_j = device->baseJframe(cameraFrame, state);
     auto sj = Jacobian(inverse(device->baseTframe(cameraFrame, state)).R());
@@ -197,7 +201,36 @@ void SamplePlugin::timer() {
 }
 
 
-cv::Mat SamplePlugin::image_stuff()
+/*
+*   Get point of the marker from the vision image tracker
+*/
+std::vector<Vector2D<double> > SamplePlugin::getVisionPoints(cv::Mat image)
+{
+    // Get the tracked point from vision
+    std::vector<cv::Point2f> trackedPoints = vision.trackPicture(image);
+
+    // Get a image showing the tracked image from vision and set it to camera view
+    cv::Mat trackedImage = vision.getVisionViewImage(image,trackedPoints);
+    setCameraViewImage(trackedImage);
+
+
+    // Convert from Point2f to Vector2D
+    std::vector<Vector2D<double> > convertedPoints;
+
+    for(auto &point : trackedPoints)
+    {
+        Vector2D<double> new_point(point.x, point.y);
+        convertedPoints.push_back(new_point);
+    }
+
+    return convertedPoints;
+}
+
+
+/*
+*   Grabs the camera image and returns it as a opencv matrix
+*/
+cv::Mat SamplePlugin::getCameraImage()
 {
     if (_framegrabber != NULL) {
 		// Get the image as a RW image
@@ -210,31 +243,30 @@ cv::Mat SamplePlugin::image_stuff()
 		Mat imflip;
 		cv::flip(im, imflip, 0);
 
-        //cv::imwrite("/home/student/Desktop/test.png", imflip);
+        //setCameraViewImage(imflip);
 
-        Vision vision;
-        LineFinding line_finder(imflip);
-        /*auto markers = line_finder.get_marker_points(&imflip);
-        for(uint8_t i = 0; i < markers.size(); i++)
-        {
-            cv::circle(imflip, markers[i],  5, Scalar( (i * 1000) % 256,i * 60,255 - i * 60),  CV_FILLED);
-        }*/
-
-        //Mat trackedImg = vision.trackPicture(imflip);
-        Mat trackedImg = imflip;
-        //Mat trackedImg = trackPicture(imflip);
-
-		// Show in QLabel
-        QImage img(trackedImg.data, trackedImg.cols, trackedImg.rows, trackedImg.step, QImage::Format_RGB888);
-		QPixmap p = QPixmap::fromImage(img);
-		unsigned int maxW = 400;
-		unsigned int maxH = 800;
-		_label->setPixmap(p.scaled(maxW,maxH,Qt::KeepAspectRatio));
         return imflip;
 	}
     return cv::Mat();
 
 }
+
+/*
+*   Sets the camera view label to a given image
+*/
+void SamplePlugin::setCameraViewImage(cv::Mat image)
+{
+    // Show in QLabel
+    QImage img(image.data, image.cols, image.rows, image.step, QImage::Format_RGB888);
+    QPixmap p = QPixmap::fromImage(img);
+    unsigned int maxW = 400;
+    unsigned int maxH = 800;
+    _label->setPixmap(p.scaled(maxW,maxH,Qt::KeepAspectRatio));
+}
+
+
+
+
 void SamplePlugin::stateChangedListener(const State& state) {
 	_state = state;
 }
