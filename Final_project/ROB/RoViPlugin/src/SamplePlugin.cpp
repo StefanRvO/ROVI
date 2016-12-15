@@ -188,7 +188,7 @@ void SamplePlugin::timer() {
     auto sj = Jacobian(inverse(device->baseTframe(cameraFrame, state).R()));
 
     Q dq = visualservoing.calculateDeltaQ(uv, target, 0.5, 823.0,sj,d_j);
-
+    keep_velocity_limits(dq);
     Q qVector = device->getQ(state);
     qVector += dq;
 
@@ -235,32 +235,18 @@ std::vector<Vector2D<double> > SamplePlugin::getVisionPoints(cv::Mat image)
 
     // Convert from Point2f to Vector2D
     std::vector<Vector2D<double> > convertedPoints;
-    Vector2D<double> p(0,0);
     for(size_t i = 0; i < trackedPoints.size(); i++)
     {
         auto  &point = trackedPoints[i];
-        if(target.size())
-            std::cout << "vision pt:   " << point << "\tframe pt:    " <<  uv_[i] << "\t target pt   " << target[i] << std::endl;
 
         Vector2D<double> new_point( (point.x - image.cols / 2) , -point.y + image.rows / 2);
         convertedPoints.push_back(new_point);
-        std::cout << new_point << "\t" << image.cols /2 << std::endl;
+        //std::cout << new_point << "\t" << image.cols /2 << std::endl;
 
-
-        p +=new_point;
     }
 
-    p *= 0.25;
-//    convertedPoints.push_back(p);
-    //convertedPoints.push_back( Vector2D<double> (p.x - image.cols / 2, -p.y + image.rows/2) - begin_midpoint);
-    //convertedPoints.push_back( Vector2D<double> (p.x - image.cols / 2, -p.y + image.rows/2)- begin_midpoint);
-
-    // Vector2D<double>(p.x - image.cols / 2, p.y - image.rows / 2 ));
-    cv::circle(image, cv::Point(p[0],p[1]),  5, Scalar( 50, 200, 80),  CV_FILLED);
-    std::cout << p << std::endl;
-
     setCameraViewImage(image);
-    std::cout << std::endl;
+    //std::cout << std::endl;
     //if(target.size()) return target;
     return convertedPoints;
 }
@@ -303,7 +289,20 @@ void SamplePlugin::setCameraViewImage(cv::Mat image)
 }
 
 
+void SamplePlugin::keep_velocity_limits(Q &dq)
+{
+     auto velocityLimits = device->getVelocityLimits();
+     for(uint8_t i = 0; i < dq.size(); i++)
+     {
+         std::cout << dq[i] << std::endl;
+         if(dq[i] > 0)
+            dq[i] = min(velocityLimits[i], dq[i]);
+        else
+         dq[i] = max(-velocityLimits[i], dq[i]);
+         std::cout << dq[i] << std::endl << std::endl;
+     }
 
+}
 
 void SamplePlugin::stateChangedListener(const State& state) {
 	_state = state;

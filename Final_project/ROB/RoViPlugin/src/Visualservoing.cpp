@@ -50,7 +50,7 @@ Q VisualServoing::calculateDeltaQ(std::vector<Vector2D<double> > uv, std::vector
 
     Eigen::MatrixXd zImageT = zImage.transpose();
     Jacobian duv_jac = combine_duv(duv_s);
-    std::cout <<"duv before\n" << duv_jac << std::endl << std::endl;
+    //std::cout <<"duv before\n" << duv_jac << std::endl << std::endl;
 
     Eigen::MatrixXd tmp = zImageT * LinearAlgebra::pseudoInverse(zImage * zImageT);
     //auto tmp = pinv
@@ -60,7 +60,7 @@ Q VisualServoing::calculateDeltaQ(std::vector<Vector2D<double> > uv, std::vector
 
     Q dq_q(dq.e());
 
-    std::cout << "duv_after\n" << imageJacobian.e() * Sq.e()  * Jq.e() * dq_q.e() << std::endl << std::endl;
+    //std::cout << "duv_after\n" << imageJacobian.e() * Sq.e()  * Jq.e() * dq_q.e() << std::endl << std::endl;
     return dq_q;
 
 }
