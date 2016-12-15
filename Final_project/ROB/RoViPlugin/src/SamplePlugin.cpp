@@ -128,7 +128,7 @@ Mat SamplePlugin::toOpenCVImage(const Image& img) {
 }
 
 void SamplePlugin::btnPressed() {
-    markerMotions = readMotionFile("/home/student/Downloads/SamplePluginPA10/motions/MarkerMotionFast.txt");
+    markerMotions = readMotionFile("/home/student/Downloads/SamplePluginPA10/motions/MarkerMotionSlow.txt");
 
 	QObject *obj = sender();
 	if(obj==_btn0){
@@ -151,7 +151,7 @@ void SamplePlugin::btnPressed() {
         counter = 0;
         marker->moveTo(markerMotions[0], state);
         getRobWorkStudio()->setState(state);
-        target_from_frame = get_tracker_points(0.5, 823., marker, cameraFrame, 1);
+        target_from_frame = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
         target = target_from_frame;
         cv::Mat image = getCameraImage();
         //target = getVisionPoints(image);
@@ -204,10 +204,29 @@ void SamplePlugin::print_max_displacement(std::vector<Vector2D<double> > uv)
     }
     error /= duv_s.size();
     if(error >= max_error) max_error = error;
-    //if(counter == markerMotions.size())
-    //{
-        std::cout << "dt, " << max_error << std::endl;
-    //}
+    if(counter == markerMotions.size())
+    {
+        std::cout << dt << ", " << max_error << std::endl;
+        dt -= 0.05;
+    }
+}
+
+void SamplePlugin::print_max_displacement_joint_pos_joint_velc(std::vector<Vector2D<double> > uv, Q dq)
+{
+    auto velocityLimits = device->getVelocityLimits() * dt;
+
+    std::vector<Vector2D<double> > duv_s;
+    duv_s.resize(uv.size());
+    std::vector<float> error;
+    for(size_t i = 0; i < duv_s.size(); i++)
+    {
+        duv_s[i] = target_from_frame[i] - uv[i];
+        error.push_back(sqrt(duv_s[i][0] * duv_s[i][0] + duv_s[i][1] * duv_s[i][1]));
+    }
+    Q qVector = device->getQ(state);
+    //Q q_limits = device->getBounds();
+    //std:: cout << q_limits << std::endl;
+
 
 
 }
@@ -224,31 +243,32 @@ void SamplePlugin::timer() {
 
     marker->moveTo(markerMotions[counter++], state);
 
-    //print_joint_and_tool_pose();
+    print_joint_and_tool_pose();
     // Use vision to get marker points
     cv::Mat image = getCameraImage();
     std::vector<Vector2D<double> > uv = getVisionPoints(image);
-    auto uv_ = get_tracker_points(0.5, 823., marker, cameraFrame, 1);
+    auto uv_ = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
     //for(auto &uv_pt : uv_) std::cout << uv_pt << "\t";
     //std::cout << std::endl;
     auto d_j = device->baseJframe(cameraFrame, state);
     auto sj = Jacobian(inverse(device->baseTframe(cameraFrame, state).R()));
 
     Q dq = visualservoing.calculateDeltaQ(uv_, target, 0.5, 823.0,sj,d_j);
-    keep_velocity_limits(dq);
     Q qVector = device->getQ(state);
-    qVector += dq;
+    qVector += keep_velocity_limits(dq);
 
 
     //std::cout << "Qvector after: " << qVector << std::endl;
     device->setQ(qVector, state);
     getRobWorkStudio()->setState(state);
-    uv_ = get_tracker_points(0.5, 823., marker, cameraFrame, 1);
-    print_max_displacement(uv_);
+    uv_ = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
+    //print_max_displacement(uv_);
     if(counter == markerMotions.size())
     {
         qVector =  Q(7, 0, -0.65, 0, 1.80, 0, 0.42, 0);
         counter = 0;
+        marker->moveTo(markerMotions[0], state);
+
         device->setQ(qVector, state);
         getRobWorkStudio()->setState(state);
     }
@@ -282,7 +302,6 @@ std::vector<Vector2D<double> > SamplePlugin::getVisionPoints(cv::Mat image)
     }
     // Get a image showing the tracked image from vision and set it to camera view
     //cv::Mat trackedImage = vision.getVisionViewImage(image,trackedPoints);
-    auto uv_ = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
 
     // Convert from Point2f to Vector2D
     std::vector<Vector2D<double> > convertedPoints;
@@ -340,18 +359,23 @@ void SamplePlugin::setCameraViewImage(cv::Mat image)
 }
 
 
-void SamplePlugin::keep_velocity_limits(Q &dq)
+Q SamplePlugin::keep_velocity_limits(Q &dq)
 {
-     auto velocityLimits = device->getVelocityLimits();
+    //std::cout << "dq\t" << dq << std::endl;
+     auto velocityLimits = device->getVelocityLimits() * dt;
+     //std::cout << "v_limit\t" << velocityLimits << std::endl;
      for(uint8_t i = 0; i < dq.size(); i++)
      {
          //std::cout << dq[i] << std::endl;
          if(dq[i] > 0)
             dq[i] = min(velocityLimits[i], dq[i]);
         else
-         dq[i] = max(-velocityLimits[i], dq[i]);
+            dq[i] = -min(velocityLimits[i], -dq[i]);
          //std::cout << dq[i] << std::endl << std::endl;
      }
+     //std::cout << "dq_mod\t" << dq << std::endl << std::endl;
+
+     return dq;
 
 }
 
@@ -381,7 +405,7 @@ std::vector<Transform3D<double> > SamplePlugin::readMotionFile(std::string fileN
         while(std::getline(file,line))
         {
             std::stringstream lineStream(line); // Create a stream for the line string
-
+            //std::cout << line << std::endl;
             // Read x,y,z,r,p,y from the line string
             lineStream >> x;
             lineStream >> y;
@@ -414,9 +438,9 @@ std::vector<Vector2D<double> > SamplePlugin::get_tracker_points(double z, double
     else
         marker_points.push_back(marker_coords * Vector3D<>(0.125,-0.125,0));
     if(cnt >= 2)
-        marker_points.push_back(marker_coords * Vector3D<>(0.125,0.125,0));
+        marker_points.push_back(marker_coords * Vector3D<>(0.125,0.19,0));
     if(cnt >= 3)
-        marker_points.push_back(marker_coords * Vector3D<>(-0.125,-0.125,0));
+        marker_points.push_back(marker_coords * Vector3D<>(-0.175,-0.125,0));
     for(auto marker_point : marker_points)
     {
         Vector2D<double> point;

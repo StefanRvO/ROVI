@@ -71,7 +71,8 @@ private:
     rw::models::Device::Ptr device;
     State state;
     std::vector<Transform3D<double> > markerMotions;
-    unsigned int counter = 0;
+    uint32_t counter = 0;
+    float dt = 1;
     VisualServoing visualservoing;
     Vision vision;
     std::vector<Vector2D<double> > get_tracker_points(double z, double f, Frame *marker, Frame *camera, int cnt);
@@ -81,10 +82,11 @@ private:
     std::vector<Vector2D<double> > target_from_frame;
     std::vector<Vector2D<double> > getVisionPoints(cv::Mat image);
     float max_error = 0;
-    void keep_velocity_limits(Q &dq);
+    Q keep_velocity_limits(Q &dq);
     void print_joint_and_tool_pose();
+    void print_max_displacement_joint_pos_joint_velc(std::vector<Vector2D<double> > uv);
     void print_max_displacement(std::vector<Vector2D<double> > uv);
-
+    void print_max_displacement_joint_pos_joint_velc(std::vector<Vector2D<double> > uv, Q dq);
 
 };
 
