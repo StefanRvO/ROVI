@@ -128,7 +128,7 @@ Mat SamplePlugin::toOpenCVImage(const Image& img) {
 }
 
 void SamplePlugin::btnPressed() {
-    markerMotions = readMotionFile("/home/student/Downloads/SamplePluginPA10/motions/MarkerMotionSlow.txt");
+    markerMotions = readMotionFile("/home/student/Downloads/SamplePluginPA10/motions/MarkerMotionFast.txt");
 
 	QObject *obj = sender();
 	if(obj==_btn0){
@@ -151,7 +151,8 @@ void SamplePlugin::btnPressed() {
         counter = 0;
         marker->moveTo(markerMotions[0], state);
         getRobWorkStudio()->setState(state);
-        target = get_tracker_points(0.5, 823., marker, cameraFrame, 1);
+        target_from_frame = get_tracker_points(0.5, 823., marker, cameraFrame, 1);
+        target = target_from_frame;
         cv::Mat image = getCameraImage();
         //target = getVisionPoints(image);
         getRobWorkStudio()->setState(state);
@@ -165,6 +166,7 @@ void SamplePlugin::btnPressed() {
 		log().info() << "spin value:" << _spinBox->value() << "\n";
 	}
 }
+
 void SamplePlugin::print_joint_and_tool_pose()
 {
     Frame* cameraFrame = _wc->findFrame("Camera");
@@ -190,6 +192,25 @@ void SamplePlugin::print_joint_and_tool_pose()
     std::cout << std::endl;
 }
 
+void SamplePlugin::print_max_displacement(std::vector<Vector2D<double> > uv)
+{
+    std::vector<Vector2D<double> > duv_s;
+    duv_s.resize(uv.size());
+    float error = 0;
+    for(size_t i = 0; i < duv_s.size(); i++)
+    {
+        duv_s[i] = target_from_frame[i] - uv[i];
+        error += sqrt(duv_s[i][0] * duv_s[i][0] + duv_s[i][1] * duv_s[i][1]);
+    }
+    error /= duv_s.size();
+    if(error >= max_error) max_error = error;
+    //if(counter == markerMotions.size())
+    //{
+        std::cout << "dt, " << max_error << std::endl;
+    //}
+
+
+}
 
 void SamplePlugin::timer() {
 
@@ -203,7 +224,7 @@ void SamplePlugin::timer() {
 
     marker->moveTo(markerMotions[counter++], state);
 
-    print_joint_and_tool_pose();
+    //print_joint_and_tool_pose();
     // Use vision to get marker points
     cv::Mat image = getCameraImage();
     std::vector<Vector2D<double> > uv = getVisionPoints(image);
@@ -218,15 +239,19 @@ void SamplePlugin::timer() {
     Q qVector = device->getQ(state);
     qVector += dq;
 
+
+    //std::cout << "Qvector after: " << qVector << std::endl;
+    device->setQ(qVector, state);
+    getRobWorkStudio()->setState(state);
+    uv_ = get_tracker_points(0.5, 823., marker, cameraFrame, 1);
+    print_max_displacement(uv_);
     if(counter == markerMotions.size())
     {
         qVector =  Q(7, 0, -0.65, 0, 1.80, 0, 0.42, 0);
         counter = 0;
+        device->setQ(qVector, state);
+        getRobWorkStudio()->setState(state);
     }
-    //std::cout << "Qvector after: " << qVector << std::endl;
-    device->setQ(qVector, state);
-    getRobWorkStudio()->setState(state);
-
 }
 
 
