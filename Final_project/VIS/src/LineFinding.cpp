@@ -11,7 +11,7 @@
 #include "helper_funcs.hpp"
 #include "LineFinding.hpp"
 #include <set>
-
+//#define ROBWORK
 using namespace std;
 using namespace cv;
 
@@ -56,24 +56,24 @@ cv::Mat LineFinding::performCanny(cv::Mat in_image, int threshold, float ratio, 
     return detected_edges;
 }
 
-cv::Mat LineFinding::applyHsvThreshold(const cv::Mat &inImg, const cv::Scalar minThresh, const cv::Scalar maxThresh)
+cv::Mat LineFinding::applyHsvThreshold(const cv::Scalar minThresh, const cv::Scalar maxThresh)
 {
     cv::Mat dstImg;
-    cv::Mat hsvImg;
-    cv::cvtColor(inImg, hsvImg, CV_BGR2HSV);    // Convert image to HSV
-    cv::inRange(hsvImg, minThresh, maxThresh, dstImg);
+    cv::inRange(HSV_image, minThresh, maxThresh, dstImg);
     return dstImg;
 }
 
 void LineFinding::detect_areas()
 {
-    //Marker series
-    //black_areas = applyHsvThreshold(org_image, cv::Scalar(0, 0, 0), cv::Scalar(255, 130, 100));
-    //white_areas = applyHsvThreshold(org_image, cv::Scalar(0, 0, 100), cv::Scalar(255, 75, 255));
     //Robwork
-    black_areas = applyHsvThreshold(org_image, cv::Scalar(0, 0, 0), cv::Scalar(255, 130, 100));
-    white_areas = applyHsvThreshold(org_image, cv::Scalar(0, 0, 230), cv::Scalar(255, 15, 255));
-
+    #ifdef ROBWORK
+    black_areas = applyHsvThreshold(cv::Scalar(0, 0, 0), cv::Scalar(255, 130, 100));
+    white_areas = applyHsvThreshold(cv::Scalar(0, 0, 230), cv::Scalar(255, 15, 255));
+    #else
+    //Marker series
+    black_areas = applyHsvThreshold(cv::Scalar(0, 0, 0), cv::Scalar(255, 130, 100));
+    white_areas = applyHsvThreshold( cv::Scalar(0, 0, 100), cv::Scalar(255, 75, 255));
+    #endif
     big_white_areas = white_areas;
     cv::Mat kernel;
     kernel = cv::Mat::ones(3,3,CV_8UC1);
@@ -88,15 +88,18 @@ void LineFinding::detect_areas()
 
 }
 
-cv::Mat LineFinding::find_largest_square()
+cv::Mat LineFinding::find_largest_square(bool &success)
 {
     //Find the largest square-like structure in the image, and return a binary image with that marked
     std::vector<std::vector<cv::Point> > contours;
     std::vector<cv::Vec4i> hierarchy;
-    //markers
-    //canny_countour = performCanny(org_image, 15,3, true, true, 7);
+    #ifdef ROBWORK
     //Robwork
     canny_countour = performCanny(org_image, 80,2, true, true, 3);
+    #else
+    //markers
+    canny_countour = performCanny(org_image, 15,3, true, true, 7);
+    #endif
 
     for(int32_t x = 0; x < big_white_areas.cols; x++)
         for(int32_t y = 0; y < big_white_areas.rows; y++)
@@ -106,10 +109,10 @@ cv::Mat LineFinding::find_largest_square()
                 canny_countour.at<uchar>(y,x) = 0;
         }
     //displayImage(canny_countour, "test_canny");
-
     cv::Mat kernel = cv::Mat::ones(5,5   ,CV_8UC1);
     cv::dilate(canny_countour,canny_countour,kernel);
     cv::findContours( canny_countour, contours, hierarchy, CV_RETR_LIST, cv::CHAIN_APPROX_NONE);
+
 
     cv::Mat bigest_square = cv::Mat::zeros(big_white_areas.size(), CV_8UC3);
     std::vector<std::vector<cv::Point> > approx_countour;
@@ -131,12 +134,19 @@ cv::Mat LineFinding::find_largest_square()
             }
         }
     }
+    if(max_contour >= approx_countour.size())
+    {   success = false;
+        return bigest_square;
+    }
 
     cv::drawContours( bigest_square, approx_countour, max_contour, cv::Scalar(255, 255,255),CV_FILLED );
-    //markers
-    //kernel = cv::Mat::ones(70,70   ,CV_8UC1);
+    #ifdef ROBWORK
     //robwork
     kernel = cv::Mat::ones(90,90   ,CV_8UC1);
+    #else
+    //markers
+    kernel = cv::Mat::ones(70,70   ,CV_8UC1);
+    #endif
     cv::dilate(bigest_square,bigest_square,kernel);
 
     //cv::namedWindow( "Contours");
@@ -146,11 +156,11 @@ cv::Mat LineFinding::find_largest_square()
 }
 
 
-void LineFinding::create_edges()
+void LineFinding::create_edges(bool &success)
 {
     //Find edges for later line detection
     detected_edges = performCanny(org_image, 50);
-    largest_square = find_largest_square();
+    largest_square = find_largest_square(success);
 
     for(int32_t x = 0; x < largest_square.cols; x++)
         for(int32_t y = 0; y < largest_square.rows; y++)
@@ -343,11 +353,9 @@ void LineFinding::sort_points(std::vector<Marker_candidate> &cand1, std::vector<
     Point2f direction = get_direction_vector(cand1[0].center, cand1[1].center, false);
     Point2f center1 = (cand1[0].center + cand1[1].center) * 0.5;
     Point2f center2 = (cand2[0].center + cand2[1].center) * 0.5;
-    //line(img, cand1[0].center, cand1[1].center,  Scalar(255,0,255), 5);
     //make a point perpendicular to the line connecting the small markers
     Point2f perp_direction(-direction.y, direction.x);
     Point2f perp_point = center1 + perp_direction * 50;
-    //line(img, center1, perp_point, Scalar(255,0,255), 5);
 
     if(get_distance(center2, perp_point) >
        get_distance(center2, center1))
@@ -469,19 +477,24 @@ void LineFinding::find_big_markers(std::vector<Marker_candidate> &small_marker_c
 
 std::vector<cv::Point2f> LineFinding::get_marker_points(cv::Mat *img)
 {
+    user_img = img;
+     cvtColor(org_image, HSV_image, CV_BGR2HSV);
+    //displayImage(org_image, "test");
+    //waitKey(0);
     detect_areas();
-    create_edges();
+    bool success = true;
+    create_edges(success);
+    if(!success) return std::vector<cv::Point2f>();
    //Detect lines in the image
    std::vector<Vec4i> lines;
-   //if(img)
-    //cvtColor(canny_countour, *img, CV_GRAY2BGR);
    HoughLinesP(detected_edges, lines, 1, CV_PI/180., 75, 100, 100 );
-   //if(img)
-//        for(auto l : lines)     line(*img, Point(l[0], l[1]), Point(l[2], l[3]),  Scalar(255,0,255), 5);
+   //for(auto l : lines)
+   //line(*user_img, Point(l[0], l[1]), Point(l[2], l[3]),  Scalar(rand() % 255,rand() % 255,rand() % 255), 2);
 
    combine_double_lines(lines);
    lines = remove_lines_outside_area(lines);
    lines = remove_lines_geometry(lines);
+
    //Collect intersection points
    if(lines.size() < 8) return std::vector<cv::Point2f>();
 
@@ -491,11 +504,11 @@ std::vector<cv::Point2f> LineFinding::get_marker_points(cv::Mat *img)
     if(intersection_points.size() < 16) return std::vector<cv::Point2f>();
     auto small_marker_candidates = marker_candidates(intersection_points, 20, 5, 2, 1);
     auto big_marker_candidates = marker_candidates(intersection_points, 100, 5, 8, 2.5);
+
     remove_duplicates(small_marker_candidates);
     remove_duplicates(big_marker_candidates);
     if(small_marker_candidates.size() < 2 or big_marker_candidates.size() < 2)
         return std::vector<cv::Point2f>();
-
     find_small_markers(small_marker_candidates, big_marker_candidates);
     if(small_marker_candidates.size() < 2 or big_marker_candidates.size() < 2)
         return std::vector<cv::Point2f>();
@@ -514,10 +527,14 @@ std::vector<cv::Point2f> LineFinding::get_marker_points(cv::Mat *img)
     if(big_marker_candidates[0].marker_id > big_marker_candidates[1].marker_id)
         std::swap(big_marker_candidates[0], big_marker_candidates[1]);
     std::vector<cv::Point2f> markers;
+
     markers.push_back(small_marker_candidates[0].center);
     markers.push_back(small_marker_candidates[1].center);
     markers.push_back(big_marker_candidates[0].center);
     markers.push_back(big_marker_candidates[1].center);
+    /*if(img)
+    {
+    }*/
 
     return markers;
 }

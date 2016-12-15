@@ -13,12 +13,12 @@ class LineFinding
 {
     public:
         LineFinding(cv::Mat in_img);
-        static cv::Mat performCanny(cv::Mat in_image, int threshold, float ratio = 3, bool convert = true, bool blur = true, int blur_image = 7);
-        static cv::Mat applyHsvThreshold(const cv::Mat &inImg, const cv::Scalar minThresh, const cv::Scalar maxThresh);
+        cv::Mat performCanny(cv::Mat in_image, int threshold, float ratio = 3, bool convert = true, bool blur = true, int blur_image = 7);
+        cv::Mat applyHsvThreshold(const cv::Scalar minThresh, const cv::Scalar maxThresh);
         void detect_areas();
         std::vector<cv::Point2f> get_marker_points(cv::Mat *img = nullptr);
-        cv::Mat find_largest_square();
-        void create_edges();
+        cv::Mat find_largest_square(bool &success);
+        void create_edges(bool &success);
         void combine_double_lines(std::vector<cv::Vec4i> &lines);
         std::vector<cv::Vec4i> remove_lines_outside_area(const std::vector<cv::Vec4i> &lines);
         std::vector<cv::Vec4i> remove_lines_geometry(const std::vector<cv::Vec4i> &lines);
@@ -32,6 +32,7 @@ class LineFinding
         void sort_points(std::vector<Marker_candidate> &cand1, std::vector<Marker_candidate> &cand2,
             int index_offset);
     private:
+        cv::Mat HSV_image;
         cv::Mat org_image;
         cv::Mat black_areas;
         cv::Mat white_areas;
@@ -40,4 +41,5 @@ class LineFinding
         std::vector<cv::Point> bigest_square_contour;
         cv::Mat largest_square;
         cv::Mat canny_countour;
+        cv::Mat *user_img;
 };

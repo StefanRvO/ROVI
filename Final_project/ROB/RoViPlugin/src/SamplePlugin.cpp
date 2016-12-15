@@ -128,20 +128,20 @@ Mat SamplePlugin::toOpenCVImage(const Image& img) {
 }
 
 void SamplePlugin::btnPressed() {
-    markerMotions = readMotionFile("/home/student/Downloads/SamplePluginPA10/motions/MarkerMotionMedium.txt");
+    markerMotions = readMotionFile("/home/student/Downloads/SamplePluginPA10/motions/MarkerMotionSlow.txt");
 
 	QObject *obj = sender();
 	if(obj==_btn0){
 		log().info() << "Button 0\n";
 		// Set a new texture (one pixel = 1 mm)
 		Image::Ptr image;
-        image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/markers/Marker1.ppm");
+        image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/markers/Marker2b.ppm");
         _textureRender->setImage(*image);
-		image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/backgrounds/color1.ppm");
+		image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/backgrounds/lines1.ppm");
 		_bgRender->setImage(*image);
 		getRobWorkStudio()->updateAndRepaint();
 	} else if(obj==_btn1){
-        state = getRobWorkStudio()->getState();
+        //state = getRobWorkStudio()->getState();
         MovableFrame* marker = (MovableFrame*) _wc->findFrame("Marker");
         // Find the marker frame origin coordinate relative to the camera
         Frame* cameraFrame = _wc->findFrame("CameraSim");
@@ -151,14 +151,14 @@ void SamplePlugin::btnPressed() {
         counter = 0;
         marker->moveTo(markerMotions[counter++ % markerMotions.size()], state);
         getRobWorkStudio()->setState(state);
-        //target = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
+        //target = get_tracker_points(0.5, 823., marker, cameraFrame, 1);
         cv::Mat image = getCameraImage();
         target = getVisionPoints(image);
         getRobWorkStudio()->setState(state);
 		log().info() << "Button 1\n";
 		// Toggle the timer on and off
 		if (!_timer->isActive())
-            _timer->start(10); // run 10 Hz
+            _timer->start(100); // run 10 Hz
 		else
 			_timer->stop();
 	} else if(obj==_spinBox){
@@ -168,7 +168,7 @@ void SamplePlugin::btnPressed() {
 
 void SamplePlugin::timer() {
 
-    state = getRobWorkStudio()->getState();
+    //state = getRobWorkStudio()->getState();
 
     // Find the marker frame and cast it to a moveable frame
     MovableFrame* marker = (MovableFrame*) _wc->findFrame("Marker");
@@ -181,12 +181,13 @@ void SamplePlugin::timer() {
     // Use vision to get marker points
     cv::Mat image = getCameraImage();
     std::vector<Vector2D<double> > uv = getVisionPoints(image);
-   // auto uv = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
-
+    //auto uv_ = get_tracker_points(0.5, 823., marker, cameraFrame, 1);
+    //for(auto &uv_pt : uv_) std::cout << uv_pt << "\t";
+    //std::cout << std::endl;
     auto d_j = device->baseJframe(cameraFrame, state);
     auto sj = Jacobian(inverse(device->baseTframe(cameraFrame, state)).R());
 
-    Q dq = visualservoing.calculateDeltaQ(uv, target,0.5, 823.0,sj,d_j);
+    Q dq = visualservoing.calculateDeltaQ(uv, target, 0.5, 823.0,sj,d_j);
 
     Q qVector = device->getQ(state);
     qVector += dq;
@@ -208,23 +209,58 @@ void SamplePlugin::timer() {
 */
 std::vector<Vector2D<double> > SamplePlugin::getVisionPoints(cv::Mat image)
 {
-    // Get the tracked point from vision
-    std::vector<cv::Point2f> trackedPoints = vision.trackPicture(image);
 
+    // Find the marker frame and cast it to a moveable frame
+    MovableFrame* marker = (MovableFrame*) _wc->findFrame("Marker");
+    // Find the marker frame origin coordinate relative to the camera
+    Frame* cameraFrame = _wc->findFrame("CameraSim");
+
+    // Get the tracked point from vision
+    cv::Mat fixed_colours;
+    cv::cvtColor(image, fixed_colours, CV_BGR2RGB);    // Convert image to HSV
+
+    LineFinding line_f(fixed_colours);
+
+    //std::vector<cv::Point2f> trackedPoints = vision.trackPicture(image);
+    std::vector<cv::Point2f> trackedPoints = line_f.get_marker_points(&image);
+    if(trackedPoints.size())
+    {
+        trackedPoints.erase(trackedPoints.begin() + 0);
+    //    trackedPoints.erase(trackedPoints.begin() + 1);
+    //    trackedPoints.erase(trackedPoints.begin() + 2);
+    }
     // Get a image showing the tracked image from vision and set it to camera view
     //cv::Mat trackedImage = vision.getVisionViewImage(image,trackedPoints);
-    setCameraViewImage(image);
-
+    auto uv_ = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
 
     // Convert from Point2f to Vector2D
     std::vector<Vector2D<double> > convertedPoints;
-
-    for(auto &point : trackedPoints)
+    Vector2D<double> p(0,0);
+    for(size_t i = 0; i < trackedPoints.size(); i++)
     {
-        Vector2D<double> new_point(-(point.x - image.cols / 2), (point.y - image.rows / 2));
+        auto  &point = trackedPoints[i];
+        if(target.size())
+            std::cout << "vision pt:   " << point << "\tframe pt:    " <<  uv_[i] << "\t target pt   " << target[i] << std::endl;
+
+        Vector2D<double> new_point( (point.x - image.cols / 2) , point.y - image.rows / 2);
         convertedPoints.push_back(new_point);
+        std::cout << new_point << "\t" << image.cols /2 << std::endl;
+
+
+        p +=new_point;
     }
 
+    p *= 0.25;
+//    convertedPoints.push_back(p);
+    //convertedPoints.push_back( Vector2D<double> (p.x - image.cols / 2, -p.y + image.rows/2) - begin_midpoint);
+    //convertedPoints.push_back( Vector2D<double> (p.x - image.cols / 2, -p.y + image.rows/2)- begin_midpoint);
+
+    // Vector2D<double>(p.x - image.cols / 2, p.y - image.rows / 2 ));
+    cv::circle(image, cv::Point(p[0],p[1]),  5, Scalar( 50, 200, 80),  CV_FILLED);
+    std::cout << p << std::endl;
+
+    setCameraViewImage(image);
+    std::cout << std::endl;
     return convertedPoints;
 }
 
@@ -242,6 +278,8 @@ cv::Mat SamplePlugin::getCameraImage()
 
 		// Convert to OpenCV image
         Mat im = toOpenCVImage(image);
+        //Mat imflip;
+        //cv::flip(im, imflip, 0);
 
         return im;
 	}
@@ -255,10 +293,8 @@ cv::Mat SamplePlugin::getCameraImage()
 void SamplePlugin::setCameraViewImage(cv::Mat image)
 {
     // Show in QLabel
-    Mat imflip;
-    cv::flip(image, imflip, 0);
 
-    QImage img(imflip.data, imflip.cols, imflip.rows, imflip.step, QImage::Format_RGB888);
+    QImage img(image.data, image.cols, image.rows, image.step, QImage::Format_RGB888);
     QPixmap p = QPixmap::fromImage(img);
     unsigned int maxW = 400;
     unsigned int maxH = 800;
@@ -322,11 +358,11 @@ std::vector<Vector2D<double> > SamplePlugin::get_tracker_points(double z, double
     Transform3D<> marker_coords = inverse(marker->fTf(camera, state));
     std::vector<Vector3D<> > marker_points;
     //Create
-    marker_points.push_back(marker_coords * Vector3D<>(0.1,0.1,0));
+    marker_points.push_back(marker_coords * Vector3D<>(0.,0,0));
     if(cnt >= 2)
-        marker_points.push_back(marker_coords * Vector3D<>(0.1,-0.1,0));
+        marker_points.push_back(marker_coords * Vector3D<>(0.1,0,0));
     if(cnt >= 3)
-        marker_points.push_back(marker_coords * Vector3D<>(-0.1,0.1,0));
+        marker_points.push_back(marker_coords * Vector3D<>(0,0.1,0));
     for(auto marker_point : marker_points)
     {
         Vector2D<double> point;

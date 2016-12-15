@@ -1,6 +1,7 @@
 #include "Visualservoing.hpp"
 
 
+
 VisualServoing::VisualServoing()
 {
 
@@ -48,8 +49,11 @@ Q VisualServoing::calculateDeltaQ(std::vector<Vector2D<double> > uv, std::vector
 
 
     auto zImageT = zImage.e().transpose();
+    Eigen::MatrixXd tmp(zImage.e() * zImageT);
+    tmp = LinearAlgebra::pseudoInverse(tmp);
 
-    auto tmp = (zImage.e() * zImageT).inverse();
+
+    //auto tmp = pinv
 
     Jacobian duv_jac = combine_duv(duv_s);
     auto y = tmp * duv_jac.e();
