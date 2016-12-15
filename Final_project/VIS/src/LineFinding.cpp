@@ -227,8 +227,8 @@ std::vector<Marker_candidate> LineFinding::marker_candidates(std::vector<Point2f
     float max_ratio, float min_ratio)
 {
     std::vector<Marker_candidate> markers;
-    flann::KDTreeIndexParams indexParams;
-    std::cout << "1" << points.size() << std::endl;
+    flann::KMeansIndexParams indexParams;
+//    std::cout << "1\t" << points.size() << std::endl;
     flann::Index kdtree(Mat(points).reshape(1), indexParams);
     for(auto it_outer = std::begin(points); it_outer != std::end(points); ++it_outer)
     {
@@ -381,8 +381,8 @@ void LineFinding::find_small_markers(std::vector<Marker_candidate> &small_marker
 
     for(auto &marker : small_marker_candidates) small_marker_points.push_back(marker.center);
 
-    flann::KDTreeIndexParams indexParams;
-    std::cout << "2" << small_marker_points.size() << std::endl;
+    flann::KMeansIndexParams indexParams;
+    //std::cout << "2\t" << small_marker_points.size() << std::endl;
 
     flann::Index kdtree(Mat(small_marker_points).reshape(1), indexParams);
     vector<float> query;
@@ -442,9 +442,9 @@ void LineFinding::find_big_markers(std::vector<Marker_candidate> &small_marker_c
     std::vector<float> dists(1);
 
     for(auto &marker : big_markers) big_marker_points.push_back(marker.center);
-
+    if(big_marker_points.size() < 2) big_markers = std::vector<Marker_candidate>();
     flann::KDTreeIndexParams indexParams;
-    std::cout << "3" << big_marker_points.size() << std::endl;
+//    std::cout << "3\t" << big_marker_points.size() << std::endl;
 
     flann::Index kdtree(Mat(big_marker_points).reshape(1), indexParams);
     vector<float> query;
@@ -534,9 +534,11 @@ std::vector<cv::Point2f> LineFinding::get_marker_points(cv::Mat *img)
     markers.push_back(small_marker_candidates[1].center);
     markers.push_back(big_marker_candidates[0].center);
     markers.push_back(big_marker_candidates[1].center);
-    /*if(img)
+    if(img)
     {
-    }*/
+        for(auto &marker : markers)
+            circle(*img, marker, 9,Scalar(rand() % 255, rand() % 255, rand() % 255 ), CV_FILLED);
+    }
 
     return markers;
 }

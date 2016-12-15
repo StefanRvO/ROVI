@@ -135,7 +135,7 @@ void SamplePlugin::btnPressed() {
 		log().info() << "Button 0\n";
 		// Set a new texture (one pixel = 1 mm)
 		Image::Ptr image;
-        image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/markers/Marker1.ppm");
+        image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/markers/Marker2b.ppm");
         _textureRender->setImage(*image);
 		image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/backgrounds/lines1.ppm");
 		_bgRender->setImage(*image);
@@ -151,14 +151,14 @@ void SamplePlugin::btnPressed() {
         counter = 0;
         marker->moveTo(markerMotions[counter++ % markerMotions.size()], state);
         getRobWorkStudio()->setState(state);
-        target = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
+        //target = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
         cv::Mat image = getCameraImage();
-        //target = getVisionPoints(image);
+        target = getVisionPoints(image);
         getRobWorkStudio()->setState(state);
 		log().info() << "Button 1\n";
 		// Toggle the timer on and off
 		if (!_timer->isActive())
-            _timer->start(20); // run 10 Hz
+            _timer->start(150); // run 10 Hz
 		else
 			_timer->stop();
 	} else if(obj==_spinBox){
@@ -187,7 +187,7 @@ void SamplePlugin::timer() {
     auto d_j = device->baseJframe(cameraFrame, state);
     auto sj = Jacobian(inverse(device->baseTframe(cameraFrame, state).R()));
 
-    Q dq = visualservoing.calculateDeltaQ(uv_, target, 0.5, 823.0,sj,d_j);
+    Q dq = visualservoing.calculateDeltaQ(uv, target, 0.5, 823.0,sj,d_j);
 
     Q qVector = device->getQ(state);
     qVector += dq;
@@ -221,8 +221,8 @@ std::vector<Vector2D<double> > SamplePlugin::getVisionPoints(cv::Mat image)
 
     LineFinding line_f(fixed_colours);
 
-    std::vector<cv::Point2f> trackedPoints = vision.trackPicture(image);
-    //std::vector<cv::Point2f> trackedPoints = line_f.get_marker_points(&image);
+    //std::vector<cv::Point2f> trackedPoints = vision.trackPicture(image);
+    std::vector<cv::Point2f> trackedPoints = line_f.get_marker_points(&image);
     if(trackedPoints.size())
     {
         trackedPoints.erase(trackedPoints.begin() + 0);
@@ -242,7 +242,7 @@ std::vector<Vector2D<double> > SamplePlugin::getVisionPoints(cv::Mat image)
         if(target.size())
             std::cout << "vision pt:   " << point << "\tframe pt:    " <<  uv_[i] << "\t target pt   " << target[i] << std::endl;
 
-        Vector2D<double> new_point( (point.x - image.cols / 2) , point.y - image.rows / 2);
+        Vector2D<double> new_point( (point.x - image.cols / 2) , -point.y + image.rows / 2);
         convertedPoints.push_back(new_point);
         std::cout << new_point << "\t" << image.cols /2 << std::endl;
 
@@ -261,6 +261,7 @@ std::vector<Vector2D<double> > SamplePlugin::getVisionPoints(cv::Mat image)
 
     setCameraViewImage(image);
     std::cout << std::endl;
+    //if(target.size()) return target;
     return convertedPoints;
 }
 

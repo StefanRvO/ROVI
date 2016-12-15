@@ -142,16 +142,16 @@ cv::Point2f Vision::getCOG(std::vector<cv::Point> contour)
 
 std::vector<cv::Point2f> Vision::trackPicture(cv::Mat &inImg)
 {
-    cvtColor(inImg, HSV_image, CV_BGR2HSV  /*CV_RGB2HSV*/);
+    cvtColor(inImg, HSV_image, /*CV_BGR2HSV*/  CV_RGB2HSV);
 
     std::vector<cv::Point2f> finalContoursCOG;
     std::vector<cv::Point2f> blueContourCOG;
 
     // Apply HSV thresholds
-    cv::Mat blueHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(110, 60, 35), cv::Scalar(130, 200, 155));
-    cv::Mat redHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(0, 145, 110), cv::Scalar(50, 220, 215));
-    //cv::Mat blueHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(110, 60, 35), cv::Scalar(130, 255, 255));
-    //cv::Mat redHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(0, 145, 110), cv::Scalar(50, 255, 255));
+    //cv::Mat blueHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(110, 60, 35), cv::Scalar(130, 200, 155));
+    //cv::Mat redHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(0, 145, 110), cv::Scalar(50, 220, 215));
+    cv::Mat blueHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(110, 60, 35), cv::Scalar(130, 255, 255));
+    cv::Mat redHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(0, 145, 110), cv::Scalar(50, 255, 255));
 
     //imwrite("Mark1_Blue_thresh_image.png", blueHsvThreshImg);
     //imwrite("Mark1_Red_thresh_image.png", redHsvThreshImg);
