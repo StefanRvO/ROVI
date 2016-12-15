@@ -11,7 +11,7 @@
 #include "helper_funcs.hpp"
 #include "LineFinding.hpp"
 #include <set>
-//#define ROBWORK
+#define ROBWORK
 using namespace std;
 using namespace cv;
 
@@ -228,7 +228,7 @@ std::vector<Marker_candidate> LineFinding::marker_candidates(std::vector<Point2f
 {
     std::vector<Marker_candidate> markers;
     flann::KDTreeIndexParams indexParams;
-
+    std::cout << "1" << points.size() << std::endl;
     flann::Index kdtree(Mat(points).reshape(1), indexParams);
     for(auto it_outer = std::begin(points); it_outer != std::end(points); ++it_outer)
     {
@@ -374,7 +374,7 @@ void LineFinding::find_small_markers(std::vector<Marker_candidate> &small_marker
 {
     std::vector<Marker_candidate> new_markers;
     Point2f square_center = getCOG(bigest_square_contour);
-    if(small_marker_candidates.size() == 0) return;
+    if(small_marker_candidates.size() < 2) return;
     std::vector<Point2f> small_marker_points;
     std::vector<int> indices(1);
     std::vector<float> dists(1);
@@ -382,6 +382,7 @@ void LineFinding::find_small_markers(std::vector<Marker_candidate> &small_marker
     for(auto &marker : small_marker_candidates) small_marker_points.push_back(marker.center);
 
     flann::KDTreeIndexParams indexParams;
+    std::cout << "2" << small_marker_points.size() << std::endl;
 
     flann::Index kdtree(Mat(small_marker_points).reshape(1), indexParams);
     vector<float> query;
@@ -443,6 +444,7 @@ void LineFinding::find_big_markers(std::vector<Marker_candidate> &small_marker_c
     for(auto &marker : big_markers) big_marker_points.push_back(marker.center);
 
     flann::KDTreeIndexParams indexParams;
+    std::cout << "3" << big_marker_points.size() << std::endl;
 
     flann::Index kdtree(Mat(big_marker_points).reshape(1), indexParams);
     vector<float> query;

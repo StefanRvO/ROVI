@@ -18,7 +18,7 @@ rw::math::Jacobian VisualServoing::calc_img_jacb(std::vector<Vector2D<double> > 
         img_jacb(0,0) = - f / z;
         img_jacb(0,1) = 0;
         img_jacb(0,2) = u / z;
-        img_jacb(0,3) = u * v / f;
+        img_jacb(0,3) = (u * v) / f;
         img_jacb(0,4) = - (f * f + u * u) / f;
         img_jacb(0,5) = v;
         img_jacb(1,0) = 0;
@@ -36,7 +36,7 @@ rw::math::Jacobian VisualServoing::calc_img_jacb(std::vector<Vector2D<double> > 
 
 Q VisualServoing::calculateDeltaQ(std::vector<Vector2D<double> > uv, std::vector<Vector2D<double> > target, const double z, const double f, rw::math::Jacobian Sq, rw::math::Jacobian Jq)
 {
-    if(uv.size() == 0) return Q(6,0,0,0,0,0,0);
+    if(uv.size() == 0) return Q(7,0,0,0,0,0,0,0);
     std::vector<Vector2D<double> > duv_s;
     duv_s.resize(uv.size());
     for(size_t i = 0; i < uv.size(); i++) duv_s[i] = target[i] - uv[i];
@@ -45,23 +45,22 @@ Q VisualServoing::calculateDeltaQ(std::vector<Vector2D<double> > uv, std::vector
     Jacobian imageJacobian = calc_img_jacb(uv, f, z);
 
     // Calculate Zimage
-    Jacobian zImage = imageJacobian * Sq * Jq;
+    Eigen::MatrixXd zImage = (imageJacobian * Sq * Jq).e();
+    std::cout << zImage << std::endl;
 
+    Eigen::MatrixXd zImageT = zImage.transpose();
+    Jacobian duv_jac = combine_duv(duv_s);
+    std::cout <<"duv before\n" << duv_jac << std::endl << std::endl;
 
-    auto zImageT = zImage.e().transpose();
-    Eigen::MatrixXd tmp(zImage.e() * zImageT);
-    tmp = LinearAlgebra::pseudoInverse(tmp);
-
-
+    Eigen::MatrixXd tmp = zImageT * LinearAlgebra::pseudoInverse(zImage * zImageT);
     //auto tmp = pinv
 
-    Jacobian duv_jac = combine_duv(duv_s);
-    auto y = tmp * duv_jac.e();
 
-    rw::math::Jacobian dq(zImageT * y);
+    rw::math::Jacobian dq(tmp * duv_jac.e());
 
     Q dq_q(dq.e());
 
+    std::cout << "duv_after\n" << imageJacobian.e() * Sq.e()  * Jq.e() * dq_q.e() << std::endl << std::endl;
     return dq_q;
 
 }

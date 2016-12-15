@@ -135,7 +135,7 @@ void SamplePlugin::btnPressed() {
 		log().info() << "Button 0\n";
 		// Set a new texture (one pixel = 1 mm)
 		Image::Ptr image;
-        image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/markers/Marker2b.ppm");
+        image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/markers/Marker1.ppm");
         _textureRender->setImage(*image);
 		image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/backgrounds/lines1.ppm");
 		_bgRender->setImage(*image);
@@ -144,21 +144,21 @@ void SamplePlugin::btnPressed() {
         //state = getRobWorkStudio()->getState();
         MovableFrame* marker = (MovableFrame*) _wc->findFrame("Marker");
         // Find the marker frame origin coordinate relative to the camera
-        Frame* cameraFrame = _wc->findFrame("CameraSim");
+        Frame* cameraFrame = _wc->findFrame("Camera");
 
         Q q(7, 0, -0.65, 0, 1.80, 0, 0.42, 0);
         device->setQ(q, state);
         counter = 0;
         marker->moveTo(markerMotions[counter++ % markerMotions.size()], state);
         getRobWorkStudio()->setState(state);
-        //target = get_tracker_points(0.5, 823., marker, cameraFrame, 1);
+        target = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
         cv::Mat image = getCameraImage();
-        target = getVisionPoints(image);
+        //target = getVisionPoints(image);
         getRobWorkStudio()->setState(state);
 		log().info() << "Button 1\n";
 		// Toggle the timer on and off
 		if (!_timer->isActive())
-            _timer->start(100); // run 10 Hz
+            _timer->start(20); // run 10 Hz
 		else
 			_timer->stop();
 	} else if(obj==_spinBox){
@@ -173,7 +173,7 @@ void SamplePlugin::timer() {
     // Find the marker frame and cast it to a moveable frame
     MovableFrame* marker = (MovableFrame*) _wc->findFrame("Marker");
     // Find the marker frame origin coordinate relative to the camera
-    Frame* cameraFrame = _wc->findFrame("CameraSim");
+    Frame* cameraFrame = _wc->findFrame("Camera");
 
 
     marker->moveTo(markerMotions[counter++], state);
@@ -181,13 +181,13 @@ void SamplePlugin::timer() {
     // Use vision to get marker points
     cv::Mat image = getCameraImage();
     std::vector<Vector2D<double> > uv = getVisionPoints(image);
-    //auto uv_ = get_tracker_points(0.5, 823., marker, cameraFrame, 1);
+    auto uv_ = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
     //for(auto &uv_pt : uv_) std::cout << uv_pt << "\t";
     //std::cout << std::endl;
     auto d_j = device->baseJframe(cameraFrame, state);
-    auto sj = Jacobian(inverse(device->baseTframe(cameraFrame, state)).R());
+    auto sj = Jacobian(inverse(device->baseTframe(cameraFrame, state).R()));
 
-    Q dq = visualservoing.calculateDeltaQ(uv, target, 0.5, 823.0,sj,d_j);
+    Q dq = visualservoing.calculateDeltaQ(uv_, target, 0.5, 823.0,sj,d_j);
 
     Q qVector = device->getQ(state);
     qVector += dq;
@@ -213,7 +213,7 @@ std::vector<Vector2D<double> > SamplePlugin::getVisionPoints(cv::Mat image)
     // Find the marker frame and cast it to a moveable frame
     MovableFrame* marker = (MovableFrame*) _wc->findFrame("Marker");
     // Find the marker frame origin coordinate relative to the camera
-    Frame* cameraFrame = _wc->findFrame("CameraSim");
+    Frame* cameraFrame = _wc->findFrame("Camera");
 
     // Get the tracked point from vision
     cv::Mat fixed_colours;
@@ -221,8 +221,8 @@ std::vector<Vector2D<double> > SamplePlugin::getVisionPoints(cv::Mat image)
 
     LineFinding line_f(fixed_colours);
 
-    //std::vector<cv::Point2f> trackedPoints = vision.trackPicture(image);
-    std::vector<cv::Point2f> trackedPoints = line_f.get_marker_points(&image);
+    std::vector<cv::Point2f> trackedPoints = vision.trackPicture(image);
+    //std::vector<cv::Point2f> trackedPoints = line_f.get_marker_points(&image);
     if(trackedPoints.size())
     {
         trackedPoints.erase(trackedPoints.begin() + 0);
@@ -358,11 +358,14 @@ std::vector<Vector2D<double> > SamplePlugin::get_tracker_points(double z, double
     Transform3D<> marker_coords = inverse(marker->fTf(camera, state));
     std::vector<Vector3D<> > marker_points;
     //Create
-    marker_points.push_back(marker_coords * Vector3D<>(0.,0,0));
+    if(cnt == 1)
+        marker_points.push_back(marker_coords * Vector3D<>(0,0,0));
+    else
+        marker_points.push_back(marker_coords * Vector3D<>(0.125,-0.125,0));
     if(cnt >= 2)
-        marker_points.push_back(marker_coords * Vector3D<>(0.1,0,0));
+        marker_points.push_back(marker_coords * Vector3D<>(0.125,0.125,0));
     if(cnt >= 3)
-        marker_points.push_back(marker_coords * Vector3D<>(0,0.1,0));
+        marker_points.push_back(marker_coords * Vector3D<>(-0.125,-0.125,0));
     for(auto marker_point : marker_points)
     {
         Vector2D<double> point;

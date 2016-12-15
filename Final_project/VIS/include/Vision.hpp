@@ -35,6 +35,8 @@ private:
     //void applyHsvTrackbar(const cv::Mat &inImg);
     void sort_points(std::vector<cv::Point2f> knownCOGS, std::vector<cv::Point2f> unknownCOGS, std::vector<cv::Point2f> &finalCOGS);
     bool first_run = 1;
+    cv::Mat HSV_image;
+    
 public:
     Vision();
     std::vector<cv::Point2f> trackPicture(cv::Mat &inImg);
