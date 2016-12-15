@@ -128,7 +128,7 @@ Mat SamplePlugin::toOpenCVImage(const Image& img) {
 }
 
 void SamplePlugin::btnPressed() {
-    markerMotions = readMotionFile("/home/student/Downloads/SamplePluginPA10/motions/MarkerMotionSlow.txt");
+    markerMotions = readMotionFile("/home/student/Downloads/SamplePluginPA10/motions/MarkerMotionFast.txt");
 
 	QObject *obj = sender();
 	if(obj==_btn0){
