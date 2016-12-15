@@ -21,6 +21,7 @@ void Vision::displayImage(std::string name, cv::Mat &image)
   cv::resizeWindow(name, 600,600);
 }
 
+/*
 // Copy of the other function with hardcoded colorMeans
 cv::Mat Vision::getThresholdImage2(const cv::Mat &inImg, cv::Scalar redThresh, cv::Scalar blueThresh)
 {
@@ -51,13 +52,13 @@ cv::Mat Vision::getThresholdImage2(const cv::Mat &inImg, cv::Scalar redThresh, c
     }
 
     return finalImage;
-}
+}*/
 
 
 cv::Mat Vision::applyHsvThreshold(const cv::Mat &inImg, const cv::Scalar minThresh, const cv::Scalar maxThresh)
 {
     cv::Mat dstImg;
-    cv::cvtColor(inImg, dstImg, CV_RGB2HSV);    // Convert image to HSV
+    cv::cvtColor(inImg, dstImg, CV_BGR2HSV/*CV_RGB2HSV*/);    // Convert image to HSV
     cv::inRange(dstImg, minThresh, maxThresh, dstImg);
     return dstImg;
 }
@@ -77,6 +78,13 @@ std::vector<std::vector<cv::Point>> Vision::getContours(cv::Mat inImg, float com
     cv::erode(inImg,inImg,kernel);
     cv::dilate(inImg,inImg,kernel);
 
+    // Save the images
+    if(first_run)
+        imwrite("Mark1_Red_DialateErode.png", inImg);
+    else
+        imwrite("Mark1_Blue_DialateErode.png", inImg);
+
+
     // Find contours
     std::vector<std::vector<cv::Point> > contours;
     std::vector<std::vector<cv::Point> > acceptedContours;
@@ -95,6 +103,26 @@ std::vector<std::vector<cv::Point>> Vision::getContours(cv::Mat inImg, float com
             acceptedContours.push_back(contours[i]);
         }
     }
+
+    // Show a image of the accepted contours
+    /// Draw contours
+    cv::Mat drawing = cv::Mat::zeros(inImg.size(), CV_8UC3 );
+    for(unsigned int i = 0; i<acceptedContours.size(); i++)
+    {
+         cv::Scalar color = cv::Scalar(255, 0, 0);
+         cv::drawContours( drawing, acceptedContours, i, color, 2, 8, hierarchy, 0, cv::Point() );
+    }
+
+    // Save the images
+    if(first_run)
+    {
+        first_run = false;
+        imwrite("Mark1_Red_ContoursFound.png", drawing);
+    }
+    else
+        imwrite("Mark1_Blue_ContoursFound.png", drawing);
+
+
     return acceptedContours;
 }
 
@@ -141,14 +169,19 @@ void Vision::applyHsvTrackbar(const cv::Mat &inImg)
 
 std::vector<cv::Point2f> Vision::trackPicture(cv::Mat &inImg)
 {
+    imwrite("Mark1_Orig_image.png", inImg);
+
     std::vector<cv::Point2f> finalContoursCOG;
     std::vector<cv::Point2f> blueContourCOG;
 
     // Apply HSV thresholds
-    //cv::Mat blueHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(110, 60, 35), cv::Scalar(130, 200, 155));
-    //cv::Mat redHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(0, 145, 110), cv::Scalar(50, 220, 215));
-    cv::Mat blueHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(110, 60, 35), cv::Scalar(130, 255, 255));
-    cv::Mat redHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(0, 145, 110), cv::Scalar(50, 255, 255));
+    cv::Mat blueHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(110, 60, 35), cv::Scalar(130, 200, 155));
+    cv::Mat redHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(0, 145, 110), cv::Scalar(50, 220, 215));
+    //cv::Mat blueHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(110, 60, 35), cv::Scalar(130, 255, 255));
+    //cv::Mat redHsvThreshImg = applyHsvThreshold(inImg, cv::Scalar(0, 145, 110), cv::Scalar(50, 255, 255));
+
+    imwrite("Mark1_Blue_thresh_image.png", blueHsvThreshImg);
+    imwrite("Mark1_Red_thresh_image.png", redHsvThreshImg);
 
     // Get the red and blue circles as contours
     std::vector<std::vector<cv::Point>> redContours = getContours(redHsvThreshImg, 0.75, 2000);
@@ -200,7 +233,13 @@ std::vector<cv::Point2f> Vision::trackPicture(cv::Mat &inImg)
       {
           // Draw a circle with a random color
           cv::circle(inImg, finalContoursCOG[i], 10, cv::Scalar(50 + rand() % 150, 50 + rand() % 150, 50 + rand() % 150), -1);
+
+          // Save images
+          if(i == 0)
+            imwrite("Marker1_Red_Cog.png", inImg);
       }
+
+      imwrite("Marker1_Final_COGS.png", inImg);
 
       return finalContoursCOG;
 
