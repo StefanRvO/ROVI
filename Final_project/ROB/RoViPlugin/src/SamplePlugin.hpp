@@ -80,6 +80,8 @@ private:
     std::vector<Vector2D<double> > target;
     std::vector<Vector2D<double> > getVisionPoints(cv::Mat image);
     void keep_velocity_limits(Q &dq);
+    void print_joint_and_tool_pose();
+
 
 };
 

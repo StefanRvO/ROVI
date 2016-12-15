@@ -59,6 +59,10 @@ struct Marker_candidate
 };
 
 
+
+//Shamelessly stolen/inspired by stackoverflow
+//http://stackoverflow.com/questions/25197805/how-to-delete-repeating-coordinates-of-vectorpoint2f
+
 bool operator==(const Marker_candidate &pt1, const Marker_candidate &pt2);
 
 namespace std

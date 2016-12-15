@@ -46,7 +46,7 @@ Q VisualServoing::calculateDeltaQ(std::vector<Vector2D<double> > uv, std::vector
 
     // Calculate Zimage
     Eigen::MatrixXd zImage = (imageJacobian * Sq * Jq).e();
-    std::cout << zImage << std::endl;
+    //std::cout << zImage << std::endl;
 
     Eigen::MatrixXd zImageT = zImage.transpose();
     Jacobian duv_jac = combine_duv(duv_s);

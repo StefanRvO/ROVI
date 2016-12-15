@@ -149,22 +149,47 @@ void SamplePlugin::btnPressed() {
         Q q(7, 0, -0.65, 0, 1.80, 0, 0.42, 0);
         device->setQ(q, state);
         counter = 0;
-        marker->moveTo(markerMotions[counter++ % markerMotions.size()], state);
+        marker->moveTo(markerMotions[0], state);
         getRobWorkStudio()->setState(state);
-        //target = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
+        target = get_tracker_points(0.5, 823., marker, cameraFrame, 1);
         cv::Mat image = getCameraImage();
-        target = getVisionPoints(image);
+        //target = getVisionPoints(image);
         getRobWorkStudio()->setState(state);
 		log().info() << "Button 1\n";
 		// Toggle the timer on and off
 		if (!_timer->isActive())
-            _timer->start(150); // run 10 Hz
+            _timer->start(10); // run 10 Hz
 		else
 			_timer->stop();
 	} else if(obj==_spinBox){
 		log().info() << "spin value:" << _spinBox->value() << "\n";
 	}
 }
+void SamplePlugin::print_joint_and_tool_pose()
+{
+    Frame* cameraFrame = _wc->findFrame("Camera");
+    Q qVector = device->getQ(state);
+    auto tool_pos = device->baseTframe(cameraFrame, state).P();
+    auto tool_rot = RPY<> (device->baseTframe(cameraFrame, state).R());
+    //std::cout << qVector << std::endl;
+    std::cout << counter - 1 << ", ";
+    for(uint8_t i = 0; i < qVector.size(); i++)
+    {
+        std::cout << qVector[i] << ", ";
+    }
+    std::cout << ", ";
+    for(uint8_t i = 0; i < tool_pos.size(); i++)
+    {
+        std::cout << tool_pos[i] << ", ";
+    }
+    std::cout << ", ";
+    for(uint8_t i = 0; i < tool_rot.size(); i++)
+    {
+        std::cout << tool_rot[i] << ", ";
+    }
+    std::cout << std::endl;
+}
+
 
 void SamplePlugin::timer() {
 
@@ -178,16 +203,17 @@ void SamplePlugin::timer() {
 
     marker->moveTo(markerMotions[counter++], state);
 
+    print_joint_and_tool_pose();
     // Use vision to get marker points
     cv::Mat image = getCameraImage();
     std::vector<Vector2D<double> > uv = getVisionPoints(image);
-    auto uv_ = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
+    auto uv_ = get_tracker_points(0.5, 823., marker, cameraFrame, 1);
     //for(auto &uv_pt : uv_) std::cout << uv_pt << "\t";
     //std::cout << std::endl;
     auto d_j = device->baseJframe(cameraFrame, state);
     auto sj = Jacobian(inverse(device->baseTframe(cameraFrame, state).R()));
 
-    Q dq = visualservoing.calculateDeltaQ(uv, target, 0.5, 823.0,sj,d_j);
+    Q dq = visualservoing.calculateDeltaQ(uv_, target, 0.5, 823.0,sj,d_j);
     keep_velocity_limits(dq);
     Q qVector = device->getQ(state);
     qVector += dq;
@@ -221,8 +247,8 @@ std::vector<Vector2D<double> > SamplePlugin::getVisionPoints(cv::Mat image)
 
     LineFinding line_f(fixed_colours);
 
-    //std::vector<cv::Point2f> trackedPoints = vision.trackPicture(image);
-    std::vector<cv::Point2f> trackedPoints = line_f.get_marker_points(&image);
+    std::vector<cv::Point2f> trackedPoints = vision.trackPicture(image);
+    //std::vector<cv::Point2f> trackedPoints = line_f.get_marker_points(&image);
     if(trackedPoints.size())
     {
         trackedPoints.erase(trackedPoints.begin() + 0);
@@ -294,12 +320,12 @@ void SamplePlugin::keep_velocity_limits(Q &dq)
      auto velocityLimits = device->getVelocityLimits();
      for(uint8_t i = 0; i < dq.size(); i++)
      {
-         std::cout << dq[i] << std::endl;
+         //std::cout << dq[i] << std::endl;
          if(dq[i] > 0)
             dq[i] = min(velocityLimits[i], dq[i]);
         else
          dq[i] = max(-velocityLimits[i], dq[i]);
-         std::cout << dq[i] << std::endl << std::endl;
+         //std::cout << dq[i] << std::endl << std::endl;
      }
 
 }
