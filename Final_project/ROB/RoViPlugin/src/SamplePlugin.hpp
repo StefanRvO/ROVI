@@ -72,7 +72,8 @@ private:
     State state;
     std::vector<Transform3D<double> > markerMotions;
     uint32_t counter = 0;
-    float dt = 1;
+    float dt = 0.155;
+    float vision_exec_time = 0.15;
     VisualServoing visualservoing;
     Vision vision;
     std::vector<Vector2D<double> > get_tracker_points(double z, double f, Frame *marker, Frame *camera, int cnt);

@@ -135,7 +135,7 @@ void SamplePlugin::btnPressed() {
 		log().info() << "Button 0\n";
 		// Set a new texture (one pixel = 1 mm)
 		Image::Ptr image;
-        image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/markers/Marker2b.ppm");
+        image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/markers/Marker1.ppm");
         _textureRender->setImage(*image);
 		image = ImageLoader::Factory::load("/home/student/Downloads/SamplePluginPA10/backgrounds/lines1.ppm");
 		_bgRender->setImage(*image);
@@ -151,15 +151,16 @@ void SamplePlugin::btnPressed() {
         counter = 0;
         marker->moveTo(markerMotions[0], state);
         getRobWorkStudio()->setState(state);
-        target_from_frame = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
-        target = target_from_frame;
         cv::Mat image = getCameraImage();
+        //target_from_frame = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
+        target_from_frame = getVisionPoints(image);
+        target = target_from_frame;
         //target = getVisionPoints(image);
         getRobWorkStudio()->setState(state);
 		log().info() << "Button 1\n";
 		// Toggle the timer on and off
 		if (!_timer->isActive())
-            _timer->start(10); // run 10 Hz
+            _timer->start(100); // run 10 Hz
 		else
 			_timer->stop();
 	} else if(obj==_spinBox){
@@ -207,13 +208,14 @@ void SamplePlugin::print_max_displacement(std::vector<Vector2D<double> > uv)
     if(counter == markerMotions.size())
     {
         std::cout << dt << ", " << max_error << std::endl;
-        dt -= 0.05;
+    //    dt -= 0.05;
     }
 }
 
 void SamplePlugin::print_max_displacement_joint_pos_joint_velc(std::vector<Vector2D<double> > uv, Q dq)
 {
-    auto velocityLimits = device->getVelocityLimits() * dt;
+    auto velocityLimits = device->getVelocityLimits() * (dt - vision_exec_time);
+
 
     std::vector<Vector2D<double> > duv_s;
     duv_s.resize(uv.size());
@@ -224,7 +226,18 @@ void SamplePlugin::print_max_displacement_joint_pos_joint_velc(std::vector<Vecto
         error.push_back(sqrt(duv_s[i][0] * duv_s[i][0] + duv_s[i][1] * duv_s[i][1]));
     }
     Q qVector = device->getQ(state);
-    //Q q_limits = device->getBounds();
+    auto q_limits = device->getBounds();
+    std::cout << counter - 1 << ", ";
+    for(auto &error_ : error) std::cout << error_ << ", ";
+    std::cout << ", ";
+
+    for(uint8_t i = 0; i < qVector.size(); i++ ) std::cout << qVector[i] / q_limits.second[i]  << ", ";
+    std::cout << ", ";
+
+    for(uint8_t i = 0; i < dq.size(); i++ ) std::cout << dq[i] / velocityLimits[i]  << ", ";
+    std::cout << ", ";
+
+    std::cout << std::endl;
     //std:: cout << q_limits << std::endl;
 
 
@@ -243,7 +256,7 @@ void SamplePlugin::timer() {
 
     marker->moveTo(markerMotions[counter++], state);
 
-    print_joint_and_tool_pose();
+//    print_joint_and_tool_pose();
     // Use vision to get marker points
     cv::Mat image = getCameraImage();
     std::vector<Vector2D<double> > uv = getVisionPoints(image);
@@ -253,7 +266,7 @@ void SamplePlugin::timer() {
     auto d_j = device->baseJframe(cameraFrame, state);
     auto sj = Jacobian(inverse(device->baseTframe(cameraFrame, state).R()));
 
-    Q dq = visualservoing.calculateDeltaQ(uv_, target, 0.5, 823.0,sj,d_j);
+    Q dq = visualservoing.calculateDeltaQ(uv, target, 0.5, 823.0,sj,d_j);
     Q qVector = device->getQ(state);
     qVector += keep_velocity_limits(dq);
 
@@ -263,6 +276,8 @@ void SamplePlugin::timer() {
     getRobWorkStudio()->setState(state);
     uv_ = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
     //print_max_displacement(uv_);
+    uv = getVisionPoints(image);
+    print_max_displacement_joint_pos_joint_velc(uv, dq);
     if(counter == markerMotions.size())
     {
         qVector =  Q(7, 0, -0.65, 0, 1.80, 0, 0.42, 0);
@@ -290,7 +305,7 @@ std::vector<Vector2D<double> > SamplePlugin::getVisionPoints(cv::Mat image)
     cv::Mat fixed_colours;
     cv::cvtColor(image, fixed_colours, CV_BGR2RGB);    // Convert image to HSV
 
-    LineFinding line_f(fixed_colours);
+    //LineFinding line_f(fixed_colours);
 
     std::vector<cv::Point2f> trackedPoints = vision.trackPicture(image);
     //std::vector<cv::Point2f> trackedPoints = line_f.get_marker_points(&image);
@@ -362,7 +377,7 @@ void SamplePlugin::setCameraViewImage(cv::Mat image)
 Q SamplePlugin::keep_velocity_limits(Q &dq)
 {
     //std::cout << "dq\t" << dq << std::endl;
-     auto velocityLimits = device->getVelocityLimits() * dt;
+     auto velocityLimits = device->getVelocityLimits() * (dt - vision_exec_time);
      //std::cout << "v_limit\t" << velocityLimits << std::endl;
      for(uint8_t i = 0; i < dq.size(); i++)
      {
