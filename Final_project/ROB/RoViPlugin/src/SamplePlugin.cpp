@@ -128,7 +128,7 @@ Mat SamplePlugin::toOpenCVImage(const Image& img) {
 }
 
 void SamplePlugin::btnPressed() {
-    markerMotions = readMotionFile("/home/student/Downloads/SamplePluginPA10/motions/MarkerMotionFast.txt");
+    markerMotions = readMotionFile("/home/student/Downloads/SamplePluginPA10/motions/MarkerMotion" SPEED ".txt");
 
 	QObject *obj = sender();
 	if(obj==_btn0){
@@ -152,10 +152,12 @@ void SamplePlugin::btnPressed() {
         marker->moveTo(markerMotions[0], state);
         getRobWorkStudio()->setState(state);
         cv::Mat image = getCameraImage();
-        //target_from_frame = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
+        #ifndef VISION
+        target_from_frame = get_tracker_points(0.5, 823., marker, cameraFrame, POINTS);
+        #else
         target_from_frame = getVisionPoints(image);
+        #endif
         target = target_from_frame;
-        //target = getVisionPoints(image);
         getRobWorkStudio()->setState(state);
 		log().info() << "Button 1\n";
 		// Toggle the timer on and off
@@ -259,8 +261,11 @@ void SamplePlugin::timer() {
 //    print_joint_and_tool_pose();
     // Use vision to get marker points
     cv::Mat image = getCameraImage();
+    #ifdef VISION
     std::vector<Vector2D<double> > uv = getVisionPoints(image);
-    auto uv_ = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
+    #else
+    auto uv = get_tracker_points(0.5, 823., marker, cameraFrame, POINTS);
+    #endif
     //for(auto &uv_pt : uv_) std::cout << uv_pt << "\t";
     //std::cout << std::endl;
     auto d_j = device->baseJframe(cameraFrame, state);
@@ -274,9 +279,13 @@ void SamplePlugin::timer() {
     //std::cout << "Qvector after: " << qVector << std::endl;
     device->setQ(qVector, state);
     getRobWorkStudio()->setState(state);
-    uv_ = get_tracker_points(0.5, 823., marker, cameraFrame, 3);
-    //print_max_displacement(uv_);
+    #ifndef VISION
+    uv = get_tracker_points(0.5, 823., marker, cameraFrame, POINTS);
+    #else
     uv = getVisionPoints(image);
+    #endif
+    //print_max_displacement(uv_);
+
     print_max_displacement_joint_pos_joint_velc(uv, dq);
     if(counter == markerMotions.size())
     {

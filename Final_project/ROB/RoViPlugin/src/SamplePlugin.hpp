@@ -1,5 +1,9 @@
 #ifndef SAMPLEPLUGIN_HPP
 #define SAMPLEPLUGIN_HPP
+#define POINTS 1
+#define VISION
+#define SPEED "Fast"
+#define D_T 1
 
 #include "ui_SamplePlugin.h"
 
@@ -72,7 +76,7 @@ private:
     State state;
     std::vector<Transform3D<double> > markerMotions;
     uint32_t counter = 0;
-    float dt = 0.155;
+    float dt = D_T;
     float vision_exec_time = 0.15;
     VisualServoing visualservoing;
     Vision vision;
