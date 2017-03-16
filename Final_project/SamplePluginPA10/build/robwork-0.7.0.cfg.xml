@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<PropertyMap>
+
+  <Property>
+    <Name>plugins</Name>
+    <Description>List of plugins or plugin locations</Description>
+    <Value>
+      <PropertyMap>
+        <Property>
+          <Name>location</Name>
+          <Description>default plugin location</Description>
+          <Value>
+            <String>plugins/</String>
+          </Value>
+        </Property>
+      </PropertyMap>
+    </Value>
+  </Property>
+
+</PropertyMap>
